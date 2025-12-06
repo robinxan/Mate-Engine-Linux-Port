@@ -24,11 +24,11 @@ body:
         - label: I am not using tiling window managers like i3 or Hyprland
     validations:
       required: true
-      
- - type: textarea
+
+  - type: textarea
     id: log
     attributes:
-      label: `-nolog` output
+      label: "-nolog output"
       description: Terminal output when launching MateEngine with argument `-nolog`
       placeholder: |
         ```
@@ -37,7 +37,7 @@ body:
     validations:
       required: true
 
- - type: textarea
+  - type: textarea
     id: system-information
     attributes:
       label: System Information
