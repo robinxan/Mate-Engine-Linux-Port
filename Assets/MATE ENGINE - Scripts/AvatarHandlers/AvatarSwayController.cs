@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using UnityEngine;
 
+
 public class AvatarSwayController : MonoBehaviour
 {
     [Header("References")]
@@ -84,21 +85,17 @@ public class AvatarSwayController : MonoBehaviour
     Quaternion lastArmRAddWorld = Quaternion.identity;
     Quaternion lastLegLAddWorld = Quaternion.identity;
     Quaternion lastLegRAddWorld = Quaternion.identity;
-
-#if UNITY_STANDALONE_WIN
+    
     IntPtr hwnd;
-    Vector2Int prevWinPos;
-#endif
+    Vector2 prevWinPos;
 
-    void Awake()
+    void Start()
     {
         draggingHash = Animator.StringToHash(draggingParam);
         windowSitHash = Animator.StringToHash(windowSitParam);
-        prevMousePos = Input.mousePosition;
-#if UNITY_STANDALONE_WIN
-        hwnd = Process.GetCurrentProcess().MainWindowHandle;
-        if (hwnd != IntPtr.Zero) prevWinPos = GetWindowPosition(hwnd);
-#endif
+        prevMousePos = WindowManager.Instance.GetMousePosition();
+        hwnd = WindowManager.Instance.UnityWindow;
+        if (hwnd != IntPtr.Zero) prevWinPos = WindowManager.Instance.GetWindowPosition();
     }
 
     void OnDisable()
@@ -120,26 +117,24 @@ public class AvatarSwayController : MonoBehaviour
 
         float dt = Time.deltaTime;
         Vector2 delta = Vector2.zero;
-
-#if UNITY_STANDALONE_WIN
+        
         if (useWindowVelocity && hwnd != IntPtr.Zero && active)
         {
-            Vector2Int wp = GetWindowPosition(hwnd);
-            Vector2Int d = wp - prevWinPos;
+            Vector2 wp = WindowManager.Instance.GetWindowPosition();
+            Vector2 d = wp - prevWinPos;
             prevWinPos = wp;
             delta = new Vector2(d.x, d.y);
         }
-#endif
         if (delta == Vector2.zero && fallbackToMouse && dragging)
         {
-            Vector2 m = Input.mousePosition;
+            Vector2 m = WindowManager.Instance.GetMousePosition();
             Vector2 md = (m - prevMousePos) * mouseSensitivity;
             prevMousePos = m;
             delta = md;
         }
         else
         {
-            prevMousePos = Input.mousePosition;
+            prevMousePos = WindowManager.Instance.GetMousePosition();
         }
 
         filteredDelta = Vector2.Lerp(filteredDelta, delta, 1f - Mathf.Exp(-12f * dt));

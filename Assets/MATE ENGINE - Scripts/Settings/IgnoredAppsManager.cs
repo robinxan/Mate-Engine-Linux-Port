@@ -1,10 +1,11 @@
-﻿using UnityEngine;
+﻿using System;
+using System.Collections;
+using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
-using NAudio.CoreAudioApi;
+using PulseAudio;
 
 public class AllowedAppsManager : MonoBehaviour
 {
@@ -12,69 +13,66 @@ public class AllowedAppsManager : MonoBehaviour
     public Button addToAllowedListButton;
     public Transform allowedAppsListContent;
     public GameObject allowedAppItemPrefab;
+    
+    private List<string> _currentRunningAppNames = new List<string>();
+    private List<string> AllowedApps => SaveLoadHandler.Instance.data.allowedApps;
 
-    private MMDeviceEnumerator enumerator;
-    private MMDevice defaultDevice;
+    private bool _initialized;
 
-    private List<string> currentRunningAppNames = new List<string>();
-    private List<string> allowedApps => SaveLoadHandler.Instance.data.allowedApps;
-
-    private void Start()
+    private void LateUpdate()
     {
-        enumerator = new MMDeviceEnumerator();
-        UpdateDefaultDevice();
-
+        if (_initialized) return;
         addToAllowedListButton.onClick.AddListener(() =>
         {
             if (runningAppsDropdown.options.Count == 0) return;
 
             string selectedApp = runningAppsDropdown.options[runningAppsDropdown.value].text;
-            if (!allowedApps.Contains(selectedApp))
+            if (!AllowedApps.Contains(selectedApp))
             {
-                allowedApps.Add(selectedApp);
+                AllowedApps.Add(selectedApp);
                 UpdateAllowedListUI();
-                RefreshRunningAppsDropdown(); // ← this is the key fix
+                StartCoroutine(RefreshRunningAppsDropdown());
                 SaveLoadHandler.Instance.SaveToDisk();
                 SaveLoadHandler.SyncAllowedAppsToAllAvatars();
             }
 
         });
 
-        RefreshRunningAppsDropdown();
+        StartCoroutine(RefreshRunningAppsDropdown());
         UpdateAllowedListUI();
         SaveLoadHandler.SyncAllowedAppsToAllAvatars(); // Initial sync on load
+        _initialized = true;
     }
-
-    private void UpdateDefaultDevice()
+    
+    
+    private IEnumerator RefreshRunningAppsDropdown()
     {
-        defaultDevice?.Dispose();
-        defaultDevice = enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
-    }
+        while (!PulseAudioManager.Instance.allSet || PulseAudioManager.Instance.callbackRunning)
+        {
+            yield return null;
+        }
+        StartCoroutine(GetRunningAudioAppNames(apps =>
+        {
+            _currentRunningAppNames = apps;
+            var filteredAppNames = _currentRunningAppNames
+                .Where(app => !AllowedApps.Contains(app))
+                .OrderBy(app => app)
+                .ToList();
 
-    private void RefreshRunningAppsDropdown()
-    {
-        UpdateDefaultDevice(); // Ensure defaultDevice is fresh
+            runningAppsDropdown.ClearOptions();
+            runningAppsDropdown.AddOptions(
+                filteredAppNames.Select(app => new TMP_Dropdown.OptionData(app)).ToList()
+            );
 
-        currentRunningAppNames = GetRunningAudioAppNames();
-
-        var filteredAppNames = currentRunningAppNames
-            .Where(app => !allowedApps.Contains(app))
-            .OrderBy(app => app)
-            .ToList();
-
-        runningAppsDropdown.ClearOptions();
-        runningAppsDropdown.AddOptions(
-            filteredAppNames.Select(app => new TMP_Dropdown.OptionData(app)).ToList()
-        );
-
-        // Reset dropdown index if empty
-        if (filteredAppNames.Count == 0)
-            runningAppsDropdown.value = 0;
+            // Reset dropdown index if empty
+            if (filteredAppNames.Count == 0)
+                runningAppsDropdown.value = 0;
+        }));
     }
 
     public void OnDropdownOpened()
     {
-        RefreshRunningAppsDropdown();
+        StartCoroutine(RefreshRunningAppsDropdown());
     }
 
     private void UpdateAllowedListUI()
@@ -82,20 +80,20 @@ public class AllowedAppsManager : MonoBehaviour
         foreach (Transform child in allowedAppsListContent)
             Destroy(child.gameObject);
 
-        foreach (var app in allowedApps)
+        foreach (var app in AllowedApps)
         {
             var item = Instantiate(allowedAppItemPrefab, allowedAppsListContent);
 
             var label = item.GetComponentsInChildren<TextMeshProUGUI>()
                             .FirstOrDefault(t => t.transform.parent == item.transform);
-            if (label != null) label.text = app;
+            if (label) label.text = app;
 
             var button = item.transform.Find("Button")?.GetComponent<Button>();
-            if (button != null)
+            if (button)
             {
                 button.onClick.AddListener(() =>
                 {
-                    allowedApps.Remove(app);
+                    AllowedApps.Remove(app);
                     UpdateAllowedListUI();
                     SaveLoadHandler.Instance.SaveToDisk();
                     SaveLoadHandler.SyncAllowedAppsToAllAvatars();
@@ -104,49 +102,37 @@ public class AllowedAppsManager : MonoBehaviour
         }
     }
 
-    private List<string> GetRunningAudioAppNames()
+    private IEnumerator GetRunningAudioAppNames(Action<List<string>> onComplete)
     {
-        var appNames = new HashSet<string>();
-        try
+        var appNames = new List<string>();
+        List<AudioProgram> audioPrograms = new();
+        bool isComplete = false;
+        PulseAudioManager.Instance.GetPlayingAudioPrograms(programs =>
         {
-            var sessions = defaultDevice.AudioSessionManager.Sessions;
-            for (int i = 0; i < sessions.Count; i++)
-            {
-                var session = sessions[i];
-                int processId = (int)session.GetProcessID;
-                if (processId == 0) continue;
-
-                try
-                {
-                    var process = Process.GetProcessById(processId);
-                    string name = process.ProcessName.ToLowerInvariant();
-                    appNames.Add(name);
-                }
-                catch { continue; }
-            }
+            audioPrograms = programs;
+            isComplete = true;
+        });
+        while (!isComplete)
+        {
+            yield return null;
         }
-        catch { }
-
-        return appNames.OrderBy(n => n).ToList();
+        for (int i = 0, count = audioPrograms.Count; i < count; i++)
+        {
+            appNames.Add(audioPrograms[i].ProcessName);
+        }
+        onComplete?.Invoke(appNames.OrderBy(n => n).ToList());
     }
-
-    private void OnDestroy()
-    {
-        enumerator?.Dispose();
-        defaultDevice?.Dispose();
-    }
-
+    
     public void RefreshAppListOnMenuOpen()
     {
-        RefreshRunningAppsDropdown();
+        StartCoroutine(RefreshRunningAppsDropdown());
         UpdateAllowedListUI();
         SaveLoadHandler.SyncAllowedAppsToAllAvatars();
     }
 
     public void RefreshUI()
     {
-        UpdateDefaultDevice();
-        RefreshRunningAppsDropdown();
+        StartCoroutine(RefreshRunningAppsDropdown());
         UpdateAllowedListUI();
         SaveLoadHandler.SyncAllowedAppsToAllAvatars();
     }

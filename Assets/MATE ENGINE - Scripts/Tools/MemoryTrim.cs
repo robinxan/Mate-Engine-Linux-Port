@@ -1,13 +1,25 @@
 using UnityEngine;
 using System.Collections;
-using System.Diagnostics;
-using System.Runtime;
 using System.Runtime.InteropServices;
 using System;
+using System.IO;
+using System.Globalization;
+using System.Runtime;
 
 public class MemoryTrim : MonoBehaviour
 {
     public bool enableAutoTrim = false;
+    
+    private const int MADV_PAGEOUT = 21; 
+    
+    [DllImport("libc.so.6", EntryPoint = "madvise", SetLastError = true)]
+    private static extern int madvise(IntPtr addr, IntPtr length, int advice);
+
+    [DllImport("libc.so.6", EntryPoint = "malloc_trim")]
+    private static extern int malloc_trim(int pad);
+
+    private static MemoryTrim _instance;
+    public static MemoryTrim Instance => _instance ??= FindFirstObjectByType<MemoryTrim>();
 
     public void SetAutoTrimEnabled(bool enabled)
     {
@@ -18,24 +30,24 @@ public class MemoryTrim : MonoBehaviour
         {
             TrimNow();
             Invoke(nameof(StartupTrim), 10f);
-            InvokeRepeating(nameof(PeriodicTrim), 600f, 600f);
+            InvokeRepeating(nameof(PeriodicTrim), 600f, 600f); 
         }
     }
-
+    
     void DelayedStartupTrim()
     {
         if (enableAutoTrim) TrimNow();
     }
 
-
     void Awake()
     {
+        _instance = this;
         if (enableAutoTrim)
         {
-            TrimNow();
-            Invoke(nameof(StartupTrim), 10f);
-            InvokeRepeating(nameof(PeriodicTrim), 600f, 600f);
-            Invoke(nameof(DelayedStartupTrim), 15f);
+             TrimNow();
+             Invoke(nameof(StartupTrim), 10f);
+             InvokeRepeating(nameof(PeriodicTrim), 600f, 600f);
+             Invoke(nameof(DelayedStartupTrim), 15f);
         }
     }
 
@@ -47,37 +59,75 @@ public class MemoryTrim : MonoBehaviour
 
     public void TrimNow()
     {
+        #if UNITY_EDITOR
+        return;
+        #endif
         StartCoroutine(TrimRoutine());
     }
 
-    void StartupTrim()
-    {
-        TrimNow();
-    }
-
-    void PeriodicTrim()
-    {
-        TrimNow();
-    }
-
-    IEnumerator TrimRoutine()
+    private IEnumerator TrimRoutine()
     {
         GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce;
-        System.GC.Collect(System.GC.MaxGeneration, System.GCCollectionMode.Forced, true, true);
+        GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true, true);
         AsyncOperation op = Resources.UnloadUnusedAssets();
         while (!op.isDone) yield return null;
-        TrimWorkingSet();
+        
+        malloc_trim(0);
+        
+        // Page Out Logic
+        if (!File.Exists("/proc/self/maps")) yield break;
+
+        string[] lines;
+        try
+        {
+            lines = File.ReadAllLines("/proc/self/maps");
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"[MemoryTrim] Failed to read maps: {e.Message}");
+            yield break;
+        }
+
+        int pagesReclaimed = 0;
+
+        foreach (var line in lines)
+        {
+            try 
+            {
+                var parts = line.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length < 2) continue;
+
+                string addressRange = parts[0];
+                string permissions = parts[1];
+                
+                if (permissions.StartsWith("rw") && permissions.Contains("p"))
+                {
+                    var addresses = addressRange.Split('-');
+                    if (addresses.Length != 2) continue;
+
+                    long start = long.Parse(addresses[0], NumberStyles.HexNumber);
+                    long end = long.Parse(addresses[1], NumberStyles.HexNumber);
+                    long length = end - start;
+                    
+                    if (length < 4096) continue;
+                    
+                    int result = madvise(new IntPtr(start), new IntPtr(length), MADV_PAGEOUT);
+                    
+                    if (result == 0) pagesReclaimed++;
+                }
+            }
+            catch
+            {
+                // Swallow parsing errors to keep the loop robust
+            }
+            
+            // Yield every few iterations to prevent frame freeze if map is huge
+            if (pagesReclaimed % 50 == 0) yield return null;
+        }
+
+        Debug.Log($"[MemoryTrim] Aggressive trim complete. Segments advised: {pagesReclaimed}");
     }
 
-    static void TrimWorkingSet()
-    {
-#if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
-        EmptyWorkingSet(Process.GetCurrentProcess().Handle);
-#endif
-    }
-
-#if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
-    [DllImport("psapi.dll")]
-    static extern bool EmptyWorkingSet(IntPtr hProcess);
-#endif
+    void StartupTrim() => TrimNow();
+    void PeriodicTrim() => TrimNow();
 }

@@ -16,7 +16,7 @@ public class InstanceEntry
 public class LaunchMateEngineInstances : MonoBehaviour
 {
     [Header("Executable")]
-    public string executableName = "MateEngineX.exe";
+    public string executableName = "launch.sh";
 
     [Header("Texts")]
     public string notRunningText = "Open Avatar {0}";

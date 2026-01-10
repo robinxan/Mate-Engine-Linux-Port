@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Runtime.InteropServices;
 
+
 public class AvatarBigScreenScreenSaver : MonoBehaviour
 {
     [Header("Enable BigScreen Screensaver Feature")]
@@ -32,20 +33,10 @@ public class AvatarBigScreenScreenSaver : MonoBehaviour
     private Animator avatarAnimator;
     private Vector2 lastMousePos;
     private float idleTimer = 0f;
+    
 
-    [DllImport("user32.dll")]
-    private static extern bool GetCursorPos(out POINT lpPoint);
-
-    [DllImport("user32.dll")]
-    private static extern short GetAsyncKeyState(int vKey);
-
-    [StructLayout(LayoutKind.Sequential)]
-    public struct POINT
-    {
-        public int X;
-        public int Y;
-    }
-
+    [DllImport("libX11.so")]
+    private static extern short XQueryKeymap(int vKey);
     void Start()
     {
         bigScreenHandler = GetComponent<AvatarBigScreenHandler>();
@@ -185,19 +176,13 @@ public class AvatarBigScreenScreenSaver : MonoBehaviour
 
     Vector2 GetGlobalMousePosition()
     {
-        POINT point;
-        GetCursorPos(out point);
-        return new Vector2(point.X, point.Y);
+        var point = WindowManager.Instance.GetMousePosition();
+        return new Vector2(point.x, point.y);
     }
 
     bool IsAnyKeyPressed()
     {
-        for (int key = 0x08; key <= 0xFE; key++)
-        {
-            if ((GetAsyncKeyState(key) & 0x8000) != 0)
-                return true;
-        }
-        return false;
+        return WindowManager.Instance.IsAnyKeyDown();
     }
 
     bool IsInAllowedState()
@@ -214,20 +199,11 @@ public class AvatarBigScreenScreenSaver : MonoBehaviour
     private bool lastGlobalMouseDown = false;
     private bool IsGlobalUserInput()
     {
-        bool mouseDown = (GetAsyncKeyState(0x01) & 0x8000) != 0;
+        bool mouseDown = WindowManager.Instance.GetMouseButton(KeyCode.Mouse0);
         bool mouseClick = mouseDown && !lastGlobalMouseDown;
         lastGlobalMouseDown = mouseDown;
-
-        bool keyPressed = false;
-        for (int key = 0x08; key <= 0xFE; key++)
-        {
-            if ((GetAsyncKeyState(key) & 0x8000) != 0)
-            {
-                keyPressed = true;
-                break;
-            }
-        }
-        return mouseClick || keyPressed;
+        
+        return mouseClick || WindowManager.Instance.IsAnyKeyDown();
     }
 
 }

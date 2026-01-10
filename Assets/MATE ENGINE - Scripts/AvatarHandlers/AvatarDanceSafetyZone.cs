@@ -2,7 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using System.Linq;
 using CustomDancePlayer;
-using X11;
+
 
 public class AvatarDanceSafetyZone : MonoBehaviour
 {
@@ -102,9 +102,9 @@ public class AvatarDanceSafetyZone : MonoBehaviour
 
         if (moveWindowAlong)
         {
-            var wp = X11Manager.Instance.GetWindowPosition();
+            var wp = WindowManager.Instance.GetWindowPosition();
             wp.x += stepPx;
-            X11Manager.Instance.SetWindowPosition(wp);
+            WindowManager.Instance.SetWindowPosition(wp);
         }
     }
 

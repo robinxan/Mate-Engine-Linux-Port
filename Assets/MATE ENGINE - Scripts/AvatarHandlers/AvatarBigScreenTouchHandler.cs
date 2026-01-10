@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Linq;
 
+
 public class AvatarBigScreenTouchHandler : MonoBehaviour
 {
     [Header("Spring Bone Touch Settings")]
@@ -123,8 +124,8 @@ public class AvatarBigScreenTouchHandler : MonoBehaviour
             }
         }
 
-        // ColliderObjekt an Mausposition setzen (auf 3D-Position in Avatarnähe)
-        Vector3 mouse = Input.mousePosition;
+        // ColliderObjekt an Mausposition setzen (auf 3D-Position in Avatarnï¿½he)
+        Vector3 mouse = WindowManager.Instance.GetMousePosition();
         float zDist = 1.0f;
         if (bigScreenHandler.attachBone != HumanBodyBones.LastBone)
         {

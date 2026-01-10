@@ -5,7 +5,6 @@ using System.Runtime.InteropServices;
 using Gtk;
 using Unity.Collections;
 using UnityEngine;
-using X11;
 using Debug = UnityEngine.Debug;
 
 public static class EarlyEnvSet
@@ -13,38 +12,38 @@ public static class EarlyEnvSet
     [DllImport("libc")]
     private static extern IntPtr setenv(string name, string value, int overwrite);
     
-    [DllImport(X11Manager.LibX11)]
-    private static extern int XGetWindowAttributes(IntPtr display, IntPtr window, out X11Manager.XWindowAttributes attributes);
+    [DllImport(WindowManager.LibX11)]
+    private static extern int XGetWindowAttributes(IntPtr display, IntPtr window, out WindowManager.XWindowAttributes attributes);
     
-    [DllImport(X11Manager.LibXRender)]
+    [DllImport(WindowManager.LibXRender)]
     private static extern IntPtr XRenderFindVisualFormat(IntPtr display, IntPtr visual);
     
-    [DllImport(X11Manager.LibX11)]
+    [DllImport(WindowManager.LibX11)]
     private static extern IntPtr XOpenDisplay(string displayName);
     
-    [DllImport(X11Manager.LibX11)]
+    [DllImport(WindowManager.LibX11)]
     private static extern IntPtr XInternAtom(IntPtr display, string atomName, bool onlyIfExists);
     
-    [DllImport(X11Manager.LibX11)]
+    [DllImport(WindowManager.LibX11)]
     private static extern IntPtr XDefaultRootWindow(IntPtr display);
     
-    [DllImport(X11Manager.LibX11)]
+    [DllImport(WindowManager.LibX11)]
     private static extern bool XTranslateCoordinates(IntPtr display, IntPtr srcW, IntPtr destW,
         int srcX, int srcY, out int destX, out int destY, out IntPtr child);
     
-    [DllImport(X11Manager.LibX11)]
+    [DllImport(WindowManager.LibX11)]
     private static extern int XGetWindowProperty(IntPtr display, IntPtr window, IntPtr property,
         long longOffset, long longLength, bool delete, IntPtr reqType,
         out IntPtr actualTypeReturn, out int actualFormatReturn,
         out ulong nItemsReturn, out ulong bytesAfterReturn, out IntPtr propReturn);
     
-    [DllImport(X11Manager.LibX11)]
+    [DllImport(WindowManager.LibX11)]
     private static extern int XGetSelectionOwner(IntPtr display, IntPtr atom);
     
-    [DllImport(X11Manager.LibX11)]
+    [DllImport(WindowManager.LibX11)]
     private static extern int XScreenCount(IntPtr display);
     
-    [DllImport(X11Manager.LibX11)]
+    [DllImport(WindowManager.LibX11)]
     private static extern int XFree(IntPtr data);
     
     
@@ -115,7 +114,7 @@ public static class EarlyEnvSet
             unityWindow = windows[0]; // Typically the first is the main window
         }
         window = unityWindow;
-        if (XGetWindowAttributes(display, unityWindow, out X11Manager.XWindowAttributes attrs) == 0)
+        if (XGetWindowAttributes(display, unityWindow, out WindowManager.XWindowAttributes attrs) == 0)
         {
             Debug.LogError("Failed to get window attributes");
             return false;
@@ -144,7 +143,7 @@ public static class EarlyEnvSet
         IntPtr formatPtr = XRenderFindVisualFormat(display, visual);
         if (formatPtr == IntPtr.Zero) return false;
 
-        X11Manager.XRenderPictFormat format = Marshal.PtrToStructure<X11Manager.XRenderPictFormat>(formatPtr);
+        WindowManager.XRenderPictFormat format = Marshal.PtrToStructure<WindowManager.XRenderPictFormat>(formatPtr);
         return format.type == 1 && format.direct.alphaMask != 0;
     }
     
@@ -194,7 +193,7 @@ public static class EarlyEnvSet
     {
         if (display == IntPtr.Zero) return false;
 
-        int result = XGetWindowAttributes(display, window, out X11Manager.XWindowAttributes attr);
+        int result = XGetWindowAttributes(display, window, out WindowManager.XWindowAttributes attr);
         if (result == 0 || attr.map_state != 2) return false;
     
         if (!XTranslateCoordinates(display, window, rootWindow, 0, 0, out int absX, out int absY, out _))
@@ -214,7 +213,7 @@ public static class EarlyEnvSet
         for (int i = index + 1; i < stacking.Count; i++)
         {
             IntPtr ow = stacking[i];
-            XGetWindowAttributes(display, ow, out X11Manager.XWindowAttributes oattr);
+            XGetWindowAttributes(display, ow, out WindowManager.XWindowAttributes oattr);
             if (oattr.map_state != 2) continue;
 
             if (!XTranslateCoordinates(display, ow, rootWindow, 0, 0, out int oabsX, out int oabsY, out _))
@@ -238,13 +237,13 @@ public static class EarlyEnvSet
         if (coversList.Count == 0) return true;
     
         // Burst-optimized union area computation
-        NativeArray<X11Manager.RectF> covers = new NativeArray<X11Manager.RectF>(coversList.Count, Allocator.Temp);
+        NativeArray<WindowManager.RectF> covers = new NativeArray<WindowManager.RectF>(coversList.Count, Allocator.Temp);
         for (int i = 0; i < coversList.Count; i++)
         {
             var t = coversList[i];
-            covers[i] = new X11Manager.RectF { x1 = t.x1, y1 = t.y1, x2 = t.x2, y2 = t.y2 };
+            covers[i] = new WindowManager.RectF { x1 = t.x1, y1 = t.y1, x2 = t.x2, y2 = t.y2 };
         }
-        float coveredArea = X11Manager.UnionAreaCalculator.Compute(covers);
+        float coveredArea = WindowManager.UnionAreaCalculator.Compute(covers);
         covers.Dispose();
     
         return coveredArea < targetArea - 1e-4f;

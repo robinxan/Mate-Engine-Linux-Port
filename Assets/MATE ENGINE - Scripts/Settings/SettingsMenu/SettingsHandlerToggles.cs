@@ -2,7 +2,7 @@ using DiscordRPC.Logging;
 using Lachee.Discord.Control;
 using UnityEngine;
 using UnityEngine.UI;
-using X11;
+
 
 public class SettingsHandlerToggles : MonoBehaviour
 {
@@ -32,7 +32,6 @@ public class SettingsHandlerToggles : MonoBehaviour
     public GameObject bloomObject;
     public GameObject dayNightObject;
     public GameObject ambientOcclusionObject;
-    public GameObject uniWindowControllerObject;
     
     private AvatarParticleHandler currentParticleHandler;
 
@@ -161,7 +160,7 @@ public class SettingsHandlerToggles : MonoBehaviour
         if (ambientOcclusionObject != null) ambientOcclusionObject.SetActive(data.ambientOcclusion);
 
         // Window
-        X11Manager.Instance.SetTopmost(data.isTopmost);
+        WindowManager.Instance.SetTopmost(data.isTopmost);
 
         // Food
         foreach (var c in Resources.FindObjectsOfTypeAll<AvatarFoodController>())

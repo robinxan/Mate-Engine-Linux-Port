@@ -19,26 +19,23 @@ public class SystemStartHandler : MonoBehaviour
 
     private void Awake()
     {
-        if (SaveLoadHandler.Instance == null)
-        {
-            Debug.LogError("[SystemStartHandler] SaveLoadHandler.Instance is null. Place SaveLoadHandler in the scene first.");
-            enabled = false;
-            return;
-        }
+        if (SaveLoadHandler.Instance) return;
+        Debug.LogError("[SystemStartHandler] SaveLoadHandler.Instance is null. Place SaveLoadHandler in the scene first.");
+        enabled = false;
     }
 
     private void Start()
     {
-        if (autoStartToggle != null)
+        if (autoStartToggle)
             autoStartToggle.onValueChanged.AddListener(OnUIToggleChanged);
 
         LoadFromSaveWithoutNotify();
-        TryApplyRegistry(SaveLoadHandler.Instance.data.startWithWindows);
+        //AddStartupEntry(SaveLoadHandler.Instance.data.startWithX11);
     }
 
     private void OnDestroy()
     {
-        if (autoStartToggle != null)
+        if (autoStartToggle)
             autoStartToggle.onValueChanged.RemoveListener(OnUIToggleChanged);
     }
 
@@ -46,10 +43,10 @@ public class SystemStartHandler : MonoBehaviour
     {
         if (_isApplyingUI) return;
 
-        SaveLoadHandler.Instance.data.startWithWindows = isOn;
+        SaveLoadHandler.Instance.data.startWithX11 = isOn;
         SaveLoadHandler.Instance.SaveToDisk();
 
-        TryApplyRegistry(isOn);
+        AddStartupEntry(isOn);
         UpdateCheckmarkText(isOn);
     }
 
@@ -59,11 +56,11 @@ public class SystemStartHandler : MonoBehaviour
         SetStateFromCode(newState);
     }
 
-    public void SetStateFromCode(bool isOn)
+    private void SetStateFromCode(bool isOn)
     {
-        SaveLoadHandler.Instance.data.startWithWindows = isOn;
+        SaveLoadHandler.Instance.data.startWithX11 = isOn;
         SaveLoadHandler.Instance.SaveToDisk();
-        TryApplyRegistry(isOn);
+        AddStartupEntry(isOn);
         ApplyToUIWithoutNotify(isOn);
     }
 
@@ -74,7 +71,7 @@ public class SystemStartHandler : MonoBehaviour
 
     private bool GetSavedState()
     {
-        return SaveLoadHandler.Instance.data != null && SaveLoadHandler.Instance.data.startWithWindows;
+        return SaveLoadHandler.Instance.data != null && SaveLoadHandler.Instance.data.startWithX11;
     }
 
     private void ApplyToUIWithoutNotify(bool isOn)
@@ -82,7 +79,7 @@ public class SystemStartHandler : MonoBehaviour
         _isApplyingUI = true;
         try
         {
-            if (autoStartToggle != null)
+            if (autoStartToggle)
                 autoStartToggle.SetIsOnWithoutNotify(isOn);
             UpdateCheckmarkText(isOn);
         }
@@ -94,87 +91,73 @@ public class SystemStartHandler : MonoBehaviour
 
     private void UpdateCheckmarkText(bool isOn)
     {
-        if (checkmarkText != null)
-            checkmarkText.text = isOn ? "☑ Start with Windows" : "☐ Start with Windows";
+        if (checkmarkText)
+            checkmarkText.text = isOn ? "☑ Start with X11" : "☐ Start with X11";
     }
 
-    // ---------------- Registry Handling ----------------
-
-    private void TryApplyRegistry(bool enable)
+    private void AddStartupEntry(bool enable)
     {
-#if UNITY_STANDALONE_WIN
-        if (Application.platform != RuntimePlatform.WindowsPlayer &&
-            Application.platform != RuntimePlatform.WindowsEditor)
+        if (Application.platform != RuntimePlatform.LinuxPlayer &&
+            Application.platform != RuntimePlatform.LinuxEditor)
         {
-            Debug.Log("[SystemStartHandler] Skipping registry (not on Windows).");
+            Debug.Log("[SystemStartHandler] Skipping autostart entry creating (not on Linux).");
             return;
         }
-
+        
         try
         {
-            string exePath = GetCurrentExecutablePathQuoted();
-            if (string.IsNullOrEmpty(exePath))
+            string appName = "MateEngine";
+            string execPath = Application.dataPath.Substring(0, Application.dataPath.LastIndexOf('/')) + "/launch.sh";
+            if (!File.Exists(execPath))
+                throw new FileNotFoundException("Required script for launching is missing.", execPath);
+            string desktopFileName = $"{appName}.desktop";
+            string autostartDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".config", "autostart");
+            string desktopFilePath = Path.Combine(autostartDir, desktopFileName);
+
+            if (!enable && File.Exists(desktopFilePath))
             {
-                Debug.LogWarning("[SystemStartHandler] Executable path empty. Skipping registry write.");
+                File.Delete(desktopFilePath);
                 return;
             }
 
-            string value = string.IsNullOrWhiteSpace(commandLineArgs)
-                ? exePath
-                : exePath + " " + commandLineArgs;
-
-            using (var key = global::Microsoft.Win32.Registry.CurrentUser.OpenSubKey(
-                       @"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", writable: true))
+            // Ensure the autostart directory exists
+            if (!Directory.Exists(autostartDir))
             {
-                if (key == null)
-                {
-                    Debug.LogError("[SystemStartHandler] HKCU Run key not found.");
-                    return;
-                }
-
-                if (enable)
-                {
-                    key.SetValue(runKeyName, value);
-                    Debug.Log($"[SystemStartHandler] Enabled autostart (HKCU) as '{runKeyName}' → {value}");
-                }
-                else
-                {
-                    key.DeleteValue(runKeyName, false);
-                    Debug.Log($"[SystemStartHandler] Disabled autostart (HKCU) for '{runKeyName}'.");
-                }
+                Debug.LogWarning("[SystemStartHandler] Wait... Do you even use X11?");
+                Directory.CreateDirectory(autostartDir);
             }
+
+            // Define the content of the .desktop file
+            string desktopFileContent = 
+$@"[Desktop Entry]
+Type=Application
+Name={appName}
+Exec=bash {execPath}
+Hidden=false
+NoDisplay=false
+Terminal=true
+X-GNOME-Autostart-enabled=true
+Comment=Autostart for {appName}
+";
+
+            // Write the .desktop file
+            File.WriteAllText(desktopFilePath, desktopFileContent);
+            
+            try
+            {
+                // Set read/write permissions
+                System.Diagnostics.Process.Start("chmod", $"u+x {desktopFilePath}")?.WaitForExit();
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[SystemStartHandler] Could not set permissions on {desktopFilePath}: {ex.Message}");
+            }
+
+            Debug.Log($"[SystemStartHandler] Successfully created {desktopFilePath}");
         }
         catch (Exception ex)
         {
-            Debug.LogError("[SystemStartHandler] Registry write failed: " + ex.Message);
+            Debug.Log($"Error creating .desktop file: {ex.Message}");
         }
-#else
-        Debug.Log("[SystemStartHandler] Registry disabled on this platform.");
-#endif
-    }
-
-    private string GetCurrentExecutablePathQuoted()
-    {
-#if UNITY_EDITOR
-        return string.Empty;
-#else
-        try
-        {
-            // Safer way in builds: Application.dataPath → go up one folder
-            string exe = Path.Combine(Directory.GetParent(Application.dataPath).FullName,
-                                      Application.productName + ".exe");
-            if (File.Exists(exe))
-                return $"\"{exe}\"";
-
-            // Fallback: try Process API
-            string proc = System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName;
-            return string.IsNullOrEmpty(proc) ? string.Empty : $"\"{proc}\"";
-        }
-        catch (Exception ex)
-        {
-            Debug.LogWarning("[SystemStartHandler] Failed to get exe path: " + ex.Message);
-            return string.Empty;
-        }
-#endif
     }
 }

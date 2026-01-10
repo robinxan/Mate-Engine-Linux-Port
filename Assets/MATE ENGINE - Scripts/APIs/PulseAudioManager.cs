@@ -180,12 +180,15 @@ namespace PulseAudio
         
         private readonly object _programsLock = new();
         
+        private PaSinkInputInfoCbT _cachedSinkInputCb;
+        
         private Thread _mainloopThread;
         private volatile bool _running;
 
         private void OnEnable()
         {
             Instance = this;
+            _cachedSinkInputCb = OnSinkInputInfo;
             Init();
         }
 
@@ -263,8 +266,7 @@ namespace PulseAudio
             }
 
             callbackRunning = true;
-            var cb = new PaSinkInputInfoCbT(OnSinkInputInfo);
-            IntPtr op = pa_context_get_sink_input_info_list(_context, cb, IntPtr.Zero);
+            IntPtr op = pa_context_get_sink_input_info_list(_context, _cachedSinkInputCb, IntPtr.Zero);
 
             if (op == IntPtr.Zero)
             {
@@ -304,13 +306,10 @@ namespace PulseAudio
         [MonoPInvokeCallback(typeof(PaSinkInputInfoCbT))]
         private void OnSinkInputInfo(IntPtr context, IntPtr info, int eol, IntPtr userdata)
         {
-            if (eol != 0)
+            if (eol != 0 || info == IntPtr.Zero)
             {
                 return;
             }
-            
-            if (info == IntPtr.Zero)
-                return;
             
             try
             {
@@ -336,7 +335,7 @@ namespace PulseAudio
             var volumes = new List<double>();
             for (int i = 0; i < sinkInput.volume.channels; i++)
             {
-                volumes.Add(sinkInput.volume.values[i] / 65535f);
+                volumes.Add(sinkInput.volume.values[i] / 65536.0);
             }
             var audioProgram = new AudioProgram
             {
@@ -389,7 +388,9 @@ namespace PulseAudio
                 return false;
 
             // Check for audio playback streams (adjust based on common values like "Audio/Playback" in PipeWire)
-            return mediaClass.Contains("Audio") || mediaClass.Contains("Stream/SinkInput");
+            return mediaClass.Contains("Audio") || 
+                   mediaClass.Contains("Stream") || 
+                   mediaClass.Contains("SinkInput");
         }
         
         private Dictionary<string, string> ParsePaProplist(IntPtr proplist)

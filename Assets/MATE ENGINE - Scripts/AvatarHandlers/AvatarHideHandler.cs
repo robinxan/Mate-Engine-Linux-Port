@@ -1,7 +1,7 @@
 using UnityEngine;
 using System;
 using System.Linq;
-using X11;
+
 
 public class AvatarHideHandler : MonoBehaviour
 {
@@ -34,7 +34,7 @@ public class AvatarHideHandler : MonoBehaviour
 
     void Start()
     {
-        unityHWND = X11Manager.Instance.UnityWindow;
+        unityHWND = WindowManager.Instance.UnityWindow;
         animator = GetComponent<Animator>();
         controller = GetComponent<AvatarAnimatorController>();
         if (animator != null && animator.isHuman && animator.avatar != null)
@@ -58,11 +58,11 @@ public class AvatarHideHandler : MonoBehaviour
 
         if (controller.isDragging && !wasDragging)
     {
-        if (X11Manager.Instance.GetWindowRect(unityHWND, out Rect wr))
+        if (WindowManager.Instance.GetWindowRect(unityHWND, out Rect wr))
         {
             windowW = Mathf.Max(1, (int)wr.width);
             windowH = Mathf.Max(1, (int)wr.height);
-            Vector2 cp = X11Manager.Instance.GetMousePosition();
+            Vector2 cp = WindowManager.Instance.GetMousePosition();
             cursorOffsetY = (int)(cp.y - wr.y);
             smoothingActive = false;
             velX = velY = 0f;
@@ -71,9 +71,9 @@ public class AvatarHideHandler : MonoBehaviour
 
     if (controller.isDragging)
     {
-        Vector2 cp = X11Manager.Instance.GetMousePosition();
+        Vector2 cp = WindowManager.Instance.GetMousePosition();
         if (cp == Vector2.zero) { wasDragging = controller.isDragging; return; }  // Fallback for query failure
-        if (!X11Manager.Instance.GetWindowRect(unityHWND, out Rect wrCur)) { wasDragging = controller.isDragging; return; }
+        if (!WindowManager.Instance.GetWindowRect(unityHWND, out Rect wrCur)) { wasDragging = controller.isDragging; return; }
         Rect mon = GetCurrentMonitorRect(cp);  // See Step 5 for implementation
 
         int anchorLeftDesk = GetAnchorDesktopX(Side.Left);
@@ -100,7 +100,7 @@ public class AvatarHideHandler : MonoBehaviour
 
         if (snappedSide != Side.None)
         {
-            if (!X11Manager.Instance.GetWindowRect(unityHWND, out Rect wr2)) { wasDragging = controller.isDragging; return; }
+            if (!WindowManager.Instance.GetWindowRect(unityHWND, out Rect wr2)) { wasDragging = controller.isDragging; return; }
             Rect monNow = GetCurrentMonitorRect(cp);
 
             int anchorDesk = GetAnchorDesktopX(snappedSide);
@@ -113,14 +113,14 @@ public class AvatarHideHandler : MonoBehaviour
             int ty = (int)cp.y - cursorOffsetY;
 
             MoveSmooth((int)wr2.x, (int)wr2.y, tx, ty, windowW, windowH);
-            if (keepTopmostWhileSnapped) X11Manager.Instance.SetTopmost(true);
+            if (keepTopmostWhileSnapped) WindowManager.Instance.SetTopmost(true);
         }
     }
     else
     {
         if (snappedSide != Side.None)
         {
-            if (!X11Manager.Instance.GetWindowRect(unityHWND, out Rect wr)) return;
+            if (!WindowManager.Instance.GetWindowRect(unityHWND, out Rect wr)) return;
             Rect mon = GetMonitorFromWindow();  // See Step 5 for implementation
 
             int anchorDesk = GetAnchorDesktopX(snappedSide);
@@ -133,7 +133,7 @@ public class AvatarHideHandler : MonoBehaviour
             int ty = (int)wr.y;
 
             MoveSmooth((int)wr.x, (int)wr.y, tx, ty, windowW, windowH);
-            if (keepTopmostWhileSnapped) X11Manager.Instance.SetTopmost(true);
+            if (keepTopmostWhileSnapped) WindowManager.Instance.SetTopmost(true);
         }
     }
 
@@ -158,7 +158,7 @@ public class AvatarHideHandler : MonoBehaviour
 
     void SnapTo(Side side, Vector2 cp, Rect mon)
     {
-        if (!X11Manager.Instance.GetWindowRect(unityHWND, out Rect wr)) return;
+        if (!WindowManager.Instance.GetWindowRect(unityHWND, out Rect wr)) return;
 
         windowW = (int)Math.Max(1, wr.width);
         windowH = (int)Math.Max(1, wr.height);
@@ -175,7 +175,7 @@ public class AvatarHideHandler : MonoBehaviour
 
         int ty = (int)cp.y - cursorOffsetY;
 
-        X11Manager.Instance.SetWindowPosition(new Vector2(tx, ty));
+        WindowManager.Instance.SetWindowPosition(new Vector2(tx, ty));
         smoothingActive = enableSmoothing;
         velX = velY = 0f;
         snappedAt = Time.unscaledTime;
@@ -201,7 +201,7 @@ public class AvatarHideHandler : MonoBehaviour
     {
         if (!enableSmoothing || !smoothingActive)
         {
-            if (curX != targetX || curY != targetY) X11Manager.Instance.SetWindowPosition(new Vector2(targetX, targetY));
+            if (curX != targetX || curY != targetY) WindowManager.Instance.SetWindowPosition(new Vector2(targetX, targetY));
             return;
         }
         float dt = Time.unscaledDeltaTime;
@@ -213,24 +213,24 @@ public class AvatarHideHandler : MonoBehaviour
         {
             ix = targetX; iy = targetY; smoothingActive = false; velX = velY = 0f;
         }
-        if (ix != curX || iy != curY) X11Manager.Instance.SetWindowPosition(new Vector2(targetX, targetY));
+        if (ix != curX || iy != curY) WindowManager.Instance.SetWindowPosition(new Vector2(targetX, targetY));
     }
 
     private Rect GetCurrentMonitorRect(Vector2 cp)
     {
-        return X11Manager.Instance.GetMonitorRectFromPoint(cp);
+        return WindowManager.Instance.GetMonitorRectFromPoint(cp);
     }
 
     private Rect GetMonitorFromWindow()  // Note: hwnd unused, but for compatibility
     {
-        return X11Manager.Instance.GetMonitorRectFromWindow(unityHWND);
+        return WindowManager.Instance.GetMonitorRectFromWindow(unityHWND);
     }
 
     private Rect GetVirtualScreenRect()
     {
         // Compute union of all monitors for virtual bounds
-        if (X11Manager.Instance.GetAllMonitors().Count == 0) return new Rect();
-        var mons = X11Manager.Instance.GetAllMonitors();
+        if (WindowManager.Instance.GetAllMonitors().Count == 0) return new Rect();
+        var mons = WindowManager.Instance.GetAllMonitors();
         float minX = mons.Min(m => m.x), minY = mons.Min(m => m.y);
         float maxX = mons.Max(m => m.x + m.width), maxY = mons.Max(m => m.y + m.height);
         return new Rect(minX, minY, maxX - minX, maxY - minY);
@@ -239,8 +239,8 @@ public class AvatarHideHandler : MonoBehaviour
     bool GetUnityClientRect(out Rect r)
     {
         r = new Rect();
-        return X11Manager.Instance.GetWindowRect(unityHWND, out r);
+        return WindowManager.Instance.GetWindowRect(unityHWND, out r);
     }
 
-    void SetTopMost(bool on) => X11Manager.Instance.SetTopmost(on);
+    void SetTopMost(bool on) => WindowManager.Instance.SetTopmost(on);
 }

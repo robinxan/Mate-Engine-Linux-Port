@@ -85,7 +85,7 @@ namespace Lachee.Discord.Control
                 //Attempt to connect
                 Logger.Info("Connecting to " + pipename + " (" + sandbox +")");
                 ConnectedPipe = pipe;
-                _stream = new NamedPipeClientStream(".", pipename);
+                _stream = new NamedPipeClientStream(".", pipename, Logger);
                 _stream.Connect();
 
                 Logger.Info("Connected");
@@ -132,13 +132,14 @@ namespace Lachee.Discord.Control
 
             //Try and read a frame
             int length = _stream.Read(_buffer, 0, _buffer.Length);
-            Logger.Trace("Read {0} bytes", length);
 
             if (length == 0)
             {
                 frame = default(PipeFrame);
                 return false;
             }
+            
+            Logger.Trace("Read {0} bytes", length);
 
             //Read the stream now
             using (MemoryStream memory = new MemoryStream(_buffer, 0, length))

@@ -1,10 +1,8 @@
-using System;
 using System.Collections.Generic;
-using System.Runtime.InteropServices;
 using UnityEngine;
-using VRM;
 using UniVRM10;
-using System.Diagnostics;
+using VRM;
+
 
 public class AvatarGravityController : MonoBehaviour
 {
@@ -22,12 +20,10 @@ public class AvatarGravityController : MonoBehaviour
     private List<VRMSpringBone> springBones = new();
     private List<VRM10SpringBoneJoint> springBoneJoints = new();
     private Vrm10Instance vrm10Instance;
-    private IntPtr unityHWND;
 
     void Start()
     {
         previousWindowPos = GetWindowPosition();
-        unityHWND = Process.GetCurrentProcess().MainWindowHandle;
 
         // VRM0 spring bones
         springBones.AddRange(GetComponentsInChildren<VRMSpringBone>(true));
@@ -87,21 +83,12 @@ public class AvatarGravityController : MonoBehaviour
         Gizmos.DrawSphere(transform.position + currentForce, 0.02f);
     }
 
-    #region Windows API
+    #region Linux API
 
     private Vector2Int GetWindowPosition()
     {
-        GetWindowRect(unityHWND, out RECT rect);
-        return new Vector2Int(rect.left, rect.top);
-    }
-
-    [DllImport("user32.dll")]
-    private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct RECT
-    {
-        public int left, top, right, bottom;
+        Vector2 vect = WindowManager.Instance.GetWindowPosition();
+        return new Vector2Int((int)vect.x, (int)vect.y);
     }
 
     #endregion

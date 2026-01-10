@@ -17,6 +17,8 @@ scopes = {
 	"picker_visibility_flags.00000000" = "0"
 	"picker_item_size.00000000" = "1"
 	"picker_inspector.00000000" = "0"
+	"OpenInspectorPreview.66F56946" = "0"
+	"currentGroup.66F56946" = "all"
 }
 providers = {
 	asset = {
@@ -83,6 +85,11 @@ providers = {
 objectSelectors = {
 }
 recentSearches = [
+	"project se"
+	"pro"
+	"players"
+	"manage "
+	"localization"
 	"st: add_ti"
 	"st: food_l"
 	"st: food_t"
@@ -98,11 +105,6 @@ recentSearches = [
 	"st: timer"
 	"st: start"
 	"st: steam"
-	"st: sdat."
-	"st: offset"
-	"st: error"
-	"st: optimi"
-	"st: alarm"
 ]
 searchItemFavorites = [
 ]
@@ -117,4 +119,4 @@ helperWidgetCurrentArea = "all"
 disabledIndexers = ""
 minIndexVariations = 2
 findProviderIndexHelper = true
-itemIconSize = 32
+itemIconSize = 1

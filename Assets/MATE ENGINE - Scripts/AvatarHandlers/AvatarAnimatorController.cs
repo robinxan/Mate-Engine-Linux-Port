@@ -1,8 +1,9 @@
-﻿using UnityEngine;
-using NAudio.CoreAudioApi;
-using System.Collections.Generic;
-using System.Diagnostics;
+﻿using System;
 using System.Collections;
+using System.Collections.Generic;
+using PulseAudio;
+using UnityEngine;
+using Random = UnityEngine.Random;
 
 public class AvatarAnimatorController : MonoBehaviour
 {
@@ -20,16 +21,14 @@ public class AvatarAnimatorController : MonoBehaviour
     public float DANCE_SWITCH_TIME = 15f;
     public float DANCE_TRANSITION_TIME = 2f;       
 
-    public bool BlockDraggingOverride = false;
+    public bool BlockDraggingOverride;
 
     private static readonly int danceIndexParam = Animator.StringToHash("DanceIndex");
     private static readonly int isIdleParam = Animator.StringToHash("isIdle");
     private static readonly int isDraggingParam = Animator.StringToHash("isDragging");
     private static readonly int isDancingParam = Animator.StringToHash("isDancing");
     private static readonly int idleIndexParam = Animator.StringToHash("IdleIndex");
-
-    private MMDevice defaultDevice;
-    private MMDeviceEnumerator enumerator;
+    
     private Coroutine soundCheckCoroutine, idleTransitionCoroutine, danceTransitionCoroutine;
     private float lastSoundCheckTime, idleTimer, danceTimer;
     private int idleState, danceState;
@@ -38,7 +37,7 @@ public class AvatarAnimatorController : MonoBehaviour
     public bool isDragging, isDancing, isIdle;
 
     [Header("Character Mode")]
-    public bool enableHusbandoMode = false;
+    public bool enableHusbandoMode;
     private static readonly int isMaleParam = Animator.StringToHash("isMale");
     private static readonly int isFemaleParam = Animator.StringToHash("isFemale");
 
@@ -47,8 +46,6 @@ public class AvatarAnimatorController : MonoBehaviour
     {
         animator ??= GetComponent<Animator>();
         Application.runInBackground = true;
-        enumerator = new MMDeviceEnumerator();
-        defaultDevice = enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
 
         animator.SetFloat(isFemaleParam, enableHusbandoMode ? 0f : 1f);
         animator.SetFloat(isMaleParam, enableHusbandoMode ? 1f : 0f);
@@ -73,12 +70,14 @@ public class AvatarAnimatorController : MonoBehaviour
             if (isDancing) SetDancing(false);
             return;
         }
-        if (defaultDevice == null) return;
         if (!isDragging)
         {
-            bool valid = IsValidAppPlaying();
-            if (valid && !isDancing) StartDancing();
-            else if (!valid && isDancing) SetDancing(false);
+            StartCoroutine(IsValidAppPlayingCoroutine(valid =>
+                {
+                    if (valid && !isDancing) StartDancing();
+                    else if (!valid && isDancing) SetDancing(false);
+                }
+            ));
         }
     }
 
@@ -101,35 +100,40 @@ public class AvatarAnimatorController : MonoBehaviour
         }
     }
 
-    bool IsValidAppPlaying()
+    private IEnumerator IsValidAppPlayingCoroutine(Action<bool> onComplete)
     {
-        if (Time.time - lastSoundCheckTime < 2f) return isDancing;
-        lastSoundCheckTime = Time.time;
-        try
+        bool result = false;
+        List<AudioProgram> audioPrograms = new List<AudioProgram>();
+        bool isComplete = false;
+        while (!PulseAudioManager.Instance.allSet || PulseAudioManager.Instance.callbackRunning)
         {
-            defaultDevice?.Dispose();
-            defaultDevice = enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
-            var sessions = defaultDevice.AudioSessionManager.Sessions;
-            for (int i = 0, count = sessions.Count; i < count; i++)
+            yield return null;
+        }
+        PulseAudioManager.Instance.GetPlayingAudioPrograms(programs =>
+        {
+            audioPrograms = programs;
+            isComplete = true;
+        });
+        while (!isComplete)
+        {
+            yield return null;
+        }
+        if (audioPrograms.Count > 0)
+        {
+            for (int i = 0; i < audioPrograms.Count; i++)
             {
-                var s = sessions[i];
-                if (s.AudioMeterInformation.MasterPeakValue > SOUND_THRESHOLD)
+                for (int j = 0; j < allowedApps.Count; j++)
                 {
-                    int pid = (int)s.GetProcessID;
-                    if (pid == 0) continue;
-                    try
+                    if (audioPrograms[i].Name.StartsWith(allowedApps[j], StringComparison.OrdinalIgnoreCase) && audioPrograms[i].volume > SOUND_THRESHOLD)
                     {
-                        string pname = Process.GetProcessById(pid)?.ProcessName;
-                        if (string.IsNullOrEmpty(pname)) continue;
-                        for (int j = 0; j < allowedApps.Count; j++)
-                            if (pname.StartsWith(allowedApps[j], System.StringComparison.OrdinalIgnoreCase)) return true;
+                        result = true;
+                        break;
                     }
-                    catch { continue; }
                 }
+                if (result) break;
             }
         }
-        catch { defaultDevice?.Dispose(); defaultDevice = null; }
-        return false;
+        onComplete?.Invoke(result);
     }
 
     void Update()
@@ -237,7 +241,5 @@ public class AvatarAnimatorController : MonoBehaviour
         if (soundCheckCoroutine != null) { StopCoroutine(soundCheckCoroutine); soundCheckCoroutine = null; }
         if (idleTransitionCoroutine != null) { StopCoroutine(idleTransitionCoroutine); idleTransitionCoroutine = null; }
         if (danceTransitionCoroutine != null) { StopCoroutine(danceTransitionCoroutine); danceTransitionCoroutine = null; }
-        defaultDevice?.Dispose(); defaultDevice = null;
-        enumerator?.Dispose(); enumerator = null;
     }
 }

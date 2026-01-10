@@ -2,6 +2,7 @@
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
+using DiscordRPC.Logging;
 
 namespace Lachee.IO
 {
@@ -9,6 +10,7 @@ namespace Lachee.IO
     {
         private IntPtr ptr;
         private bool _isDisposed;
+        public ILogger Logger { get; set; }
         
         /// <summary>
         /// Can the stream read? Always returns true.
@@ -51,11 +53,12 @@ namespace Lachee.IO
         /// </summary>
         /// <param name="server">The remote to connect too</param>
         /// <param name="pipeName">The name of the pipe that will be connected too.</param>
-        public NamedPipeClientStream(string server, string pipeName)
+        public NamedPipeClientStream(string server, string pipeName, ILogger logger)
         {
             ptr = Native.CreateClient();
             PipeName = FormatPipe(server, pipeName);
-            Console.WriteLine("Created new NamedPipeClientStream '{0}' => '{1}'", pipeName, PipeName);
+            Logger = logger;
+            Logger.Trace("Created new NamedPipeClientStream '{0}' => '{1}'", pipeName, PipeName);
         }
         
         ~NamedPipeClientStream()
