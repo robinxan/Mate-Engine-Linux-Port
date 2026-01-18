@@ -386,11 +386,10 @@ namespace PulseAudio
         {
             if (string.IsNullOrEmpty(mediaClass))
                 return false;
-
-            // Check for audio playback streams (adjust based on common values like "Audio/Playback" in PipeWire)
+            
             return mediaClass.Contains("Audio") || 
                    mediaClass.Contains("Stream") || 
-                   mediaClass.Contains("SinkInput");
+                   mediaClass.Contains("Output");
         }
         
         private Dictionary<string, string> ParsePaProplist(IntPtr proplist)

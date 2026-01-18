@@ -412,8 +412,6 @@ GameObject:
   - component: {fileID: 6007594636148689675}
   - component: {fileID: 612166141026125142}
   - component: {fileID: 761036785058896805}
-  - component: {fileID: 7000043600154446715}
-  - component: {fileID: 6785576969230926445}
   m_Layer: 5
   m_Name: Upload
   m_TagString: Untagged
@@ -535,47 +533,6 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
---- !u!114 &7000043600154446715
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1142974668996584398}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1eeb6c532ff2c2f45ba1e33a3c47015a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: '::'
-  button: {fileID: 761036785058896805}
-  filePath: 
-  progressBar: {fileID: 619381633284986650}
-  displayName: 
-  author: 
-  isNSFW: 0
-  thumbnailPath: 
---- !u!114 &6785576969230926445
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1142974668996584398}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5ca739114fe0b994da3b5f84ce79c673, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: '::'
-  progressSlider: {fileID: 619381633284986650}
-  labelText: {fileID: 4195120011789607674}
-  errorText: {fileID: 1964366390248088687}
-  previewImage: {fileID: 4849091865800073621}
-  audioSource: {fileID: 7718908701645140085}
-  completeSound: {fileID: 8300000, guid: bd8c385aa551a604093624314940e2b6, type: 3}
-  tickSound: {fileID: 8300000, guid: ed75ee7d66b3feb419728cbd10cbd9a2, type: 3}
-  fallbackUpload: Upload
-  fallbackUpdate: Update
-  holdSeconds: 5
 --- !u!1 &1149405773292396590
 GameObject:
   m_ObjectHideFlags: 0

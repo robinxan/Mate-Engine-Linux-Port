@@ -183,7 +183,8 @@ public class SaveLoadHandler : MonoBehaviour
         public string selectedParticleTheme = "Standard";
         public bool enableFeedSystem = false;
         public bool enableRandomAvatar = false;
-        public bool useXMoveWindow = false;
+        [JsonProperty("useXMoveWindow")]
+        public bool useLegacyMoveResizeCalls = false;
         public bool verboseDiscordRPCLog = false;
 
         //ALARM

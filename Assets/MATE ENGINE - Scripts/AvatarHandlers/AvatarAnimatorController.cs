@@ -124,7 +124,7 @@ public class AvatarAnimatorController : MonoBehaviour
             {
                 for (int j = 0; j < allowedApps.Count; j++)
                 {
-                    if (audioPrograms[i].Name.StartsWith(allowedApps[j], StringComparison.OrdinalIgnoreCase) && audioPrograms[i].volume > SOUND_THRESHOLD)
+                    if (audioPrograms[i].ProcessName == string.Empty & audioPrograms[i].Name.StartsWith(allowedApps[j], StringComparison.OrdinalIgnoreCase) | audioPrograms[i].ProcessName.StartsWith(allowedApps[j], StringComparison.OrdinalIgnoreCase) && audioPrograms[i].volume > SOUND_THRESHOLD)
                     {
                         result = true;
                         break;

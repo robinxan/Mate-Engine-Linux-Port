@@ -118,7 +118,7 @@ public class AllowedAppsManager : MonoBehaviour
         }
         for (int i = 0, count = audioPrograms.Count; i < count; i++)
         {
-            appNames.Add(audioPrograms[i].ProcessName);
+            appNames.Add(audioPrograms[i].ProcessName == string.Empty ? audioPrograms[i].Name : audioPrograms[i].ProcessName);
         }
         onComplete?.Invoke(appNames.OrderBy(n => n).ToList());
     }

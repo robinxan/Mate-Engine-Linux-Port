@@ -15,7 +15,6 @@ public class UploadButtonHoldHandler : MonoBehaviour, IPointerDownHandler, IPoin
     [HideInInspector] public AvatarLibraryMenu.AvatarEntry entry;
 
     [Header("UI References")]
-    public Slider progressSlider;
     public TMP_Text labelText;
     public TMP_Text errorText;
 

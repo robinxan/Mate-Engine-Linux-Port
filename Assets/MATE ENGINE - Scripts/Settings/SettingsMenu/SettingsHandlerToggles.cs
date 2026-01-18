@@ -25,7 +25,6 @@ public class SettingsHandlerToggles : MonoBehaviour
     public Toggle enableMinecraftMessagesToggle;
     public Toggle enableFeedSystemToggle;
     public Toggle enableRandomAvatarToggle;
-    public Toggle useXMoveWindowToggle;
     public Toggle verboseDiscordRpcLogToggle;
 
     [Header("External Objects")]
@@ -55,7 +54,6 @@ public class SettingsHandlerToggles : MonoBehaviour
         enableMinecraftMessagesToggle?.onValueChanged.AddListener(OnEnableMinecraftMessagesChanged);
         enableFeedSystemToggle?.onValueChanged.AddListener(OnEnableFeedSystemChanged);
         enableRandomAvatarToggle?.onValueChanged.AddListener(OnEnableRandomAvatarChanged);
-        useXMoveWindowToggle?.onValueChanged.AddListener(OnUseXMoveWindowToggleChanged);
         verboseDiscordRpcLogToggle?.onValueChanged.AddListener(OnVerboseDiscordRpcLogChanged);
         LoadSettings();
         ApplySettings();
@@ -101,8 +99,8 @@ public class SettingsHandlerToggles : MonoBehaviour
         Save();
     }
     private void OnEnableRandomAvatarChanged(bool v) { SaveLoadHandler.Instance.data.enableRandomAvatar = v; Save(); }
-    private void OnUseXMoveWindowToggleChanged(bool v) { SaveLoadHandler.Instance.data.useXMoveWindow = v; Save(); }
-    private void OnVerboseDiscordRpcLogChanged(bool v) { SaveLoadHandler.Instance.data.verboseDiscordRPCLog = v; DiscordPresence.Instance.client.Logger = v ? new UnityLogger { Level = LogLevel.Trace } : new NullLogger(); Save(); }
+    
+    private void OnVerboseDiscordRpcLogChanged(bool v) { SaveLoadHandler.Instance.data.verboseDiscordRPCLog = v; if (DiscordPresence.Instance.isInitialized) DiscordPresence.Instance.client.Logger = v ? new UnityLogger { Level = LogLevel.Trace } : new NullLogger(); Save(); }
     #endregion
 
     public void LoadSettings()
@@ -126,7 +124,6 @@ public class SettingsHandlerToggles : MonoBehaviour
         enableMinecraftMessagesToggle?.SetIsOnWithoutNotify(data.enableMinecraftMessages);
         enableFeedSystemToggle?.SetIsOnWithoutNotify(SaveLoadHandler.Instance.data.enableFeedSystem);
         enableRandomAvatarToggle?.SetIsOnWithoutNotify(SaveLoadHandler.Instance.data.enableRandomAvatar);
-        useXMoveWindowToggle?.SetIsOnWithoutNotify(data.useXMoveWindow);
         verboseDiscordRpcLogToggle?.SetIsOnWithoutNotify(data.verboseDiscordRPCLog);
         ApplySettings();
     }
@@ -205,7 +202,6 @@ public class SettingsHandlerToggles : MonoBehaviour
         enableMinecraftMessagesToggle?.SetIsOnWithoutNotify(false);
         enableFeedSystemToggle?.SetIsOnWithoutNotify(false);
         enableRandomAvatarToggle?.SetIsOnWithoutNotify(false);
-        useXMoveWindowToggle?.SetIsOnWithoutNotify(false);
         verboseDiscordRpcLogToggle?.SetIsOnWithoutNotify(false);
 
         var data = SaveLoadHandler.Instance.data;
@@ -227,7 +223,7 @@ public class SettingsHandlerToggles : MonoBehaviour
         data.enableFeedSystem = false;
         data.enableMinecraftMessages = false;
         data.enableRandomAvatar = false;
-        data.useXMoveWindow = false;
+        data.useLegacyMoveResizeCalls = false;
         data.verboseDiscordRPCLog = false;
         
         SaveLoadHandler.Instance.SaveToDisk();

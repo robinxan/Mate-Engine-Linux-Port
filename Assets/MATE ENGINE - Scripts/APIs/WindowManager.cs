@@ -31,12 +31,12 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
 {
     public static WindowManager Instance;
     
-    private DesktopEnvironments currentDesktopEnv;
-    private SessionTypes currentSessionType;
+    private DesktopEnvironments _currentDesktopEnv;
+    private SessionTypes _currentSessionType;
 
-    private Vector2 initialMousePos;
-    private Vector2 initialWindowPos;
-    private bool isDragging;
+    private Vector2 _initialMousePos;
+    private Vector2 _initialWindowPos;
+    private bool _isDragging;
 
     public IntPtr Display
     {
@@ -58,14 +58,16 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
     private void OnEnable()
     {
         Instance = this;
+
+        _shapingStopwatch = new();
         
-        if (Enum.TryParse(Environment.GetEnvironmentVariable("XDG_CURRENT_DESKTOP"), true, out currentDesktopEnv))
+        if (Enum.TryParse(Environment.GetEnvironmentVariable("XDG_CURRENT_DESKTOP"), true, out _currentDesktopEnv))
             return;
-        if (!Enum.TryParse(Environment.GetEnvironmentVariable("XDG_SESSION_TYPE"), true, out currentSessionType))
+        if (!Enum.TryParse(Environment.GetEnvironmentVariable("XDG_SESSION_TYPE"), true, out _currentSessionType))
         {
-            currentSessionType = SessionTypes.Unknown;
+            _currentSessionType = SessionTypes.Unknown;
         }
-        currentDesktopEnv = currentSessionType switch
+        _currentDesktopEnv = _currentSessionType switch
         {
             SessionTypes.X11 => DesktopEnvironments.OtherX11,
             SessionTypes.Wayland => DesktopEnvironments.OtherWayland,
@@ -73,25 +75,25 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
         };
     }
 
-    private Vector2 lastPos;
+    private Vector2 _lastPos;
 
     void Update()
     {
-        if (isDragging)
+        if (_isDragging)
         {
-            if (currentDesktopEnv == DesktopEnvironments.Hyprland){
+            if (_currentDesktopEnv == DesktopEnvironments.Hyprland){
                 var current = WaylandUtility.GetMousePositionHyprland();
-                if (current == lastPos) return;
+                if (current == _lastPos) return;
                 SetWindowPosition(current);
-                lastPos = current;
+                _lastPos = current;
                 return;
             }
             var currentMousePos = GetMousePosition();
-            var delta = currentMousePos - initialMousePos;
-            var newPos = initialWindowPos + delta;
-            if (newPos == lastPos) return;
+            var delta = currentMousePos - _initialMousePos;
+            var newPos = _initialWindowPos + delta;
+            if (newPos == _lastPos) return;
             SetWindowPosition(newPos);
-            lastPos = newPos;
+            _lastPos = newPos;
         }
     }
 
@@ -123,14 +125,14 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
 
     public void OnPointerDown(PointerEventData eventData)
     {
-        initialMousePos = GetMousePosition();
-        initialWindowPos = GetWindowPosition();
-        isDragging = true;
+        _initialMousePos = GetMousePosition();
+        _initialWindowPos = GetWindowPosition();
+        _isDragging = true;
     }
 
     public void OnPointerUp(PointerEventData eventData)
     {
-        isDragging = false;
+        _isDragging = false;
     }
 
     private void Init()
@@ -146,11 +148,16 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
         XSetErrorHandler(ShowError);
 
         _rootWindow = XDefaultRootWindow(_display);
+        
         _netWmState = XInternAtom(_display, "_NET_WM_STATE", false);
         _netWmStateFullscreen = XInternAtom(_display, "_NET_WM_STATE_FULLSCREEN", false);
         _netWmStateMaxHorz = XInternAtom(_display, "_NET_WM_STATE_MAXIMIZED_HORZ", false);
         _netWmStateMaxVert = XInternAtom(_display, "_NET_WM_STATE_MAXIMIZED_VERT", false);
         _netWmWindowType = XInternAtom(_display, "_NET_WM_WINDOW_TYPE", false);
+        _netMoveResizeWindow = XInternAtom(_display, "_NET_MOVERESIZE_WINDOW", true);
+        _netWmStateAbove = XInternAtom(_display, "_NET_WM_STATE_ABOVE", true);
+        _netWmStateSkipTaskbar = XInternAtom(_display, "_NET_WM_STATE_SKIP_TASKBAR", true);
+        motifHintsAtom = XInternAtom(_display, "_MOTIF_WM_HINTS", false);
     }
         
     private int ShowError(IntPtr display, IntPtr e)
@@ -170,7 +177,7 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
 
         XGetErrorText(_display, error.error_code, buffer, buffer.Length);
 
-        return System.Text.Encoding.ASCII.GetString(buffer).TrimEnd('\0');;
+        return System.Text.Encoding.ASCII.GetString(buffer).TrimEnd('\0');
     }
 
     private void Dispose()
@@ -223,19 +230,18 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
     public void SetWindowPosition(Vector2 position)
     {
         if (!SceneManager.GetActiveScene().name.Contains("Test"))
-            if (SaveLoadHandler.Instance.data.useXMoveWindow)
+            if (SaveLoadHandler.Instance.data.useLegacyMoveResizeCalls)
             {
                 SetWindowPositionLegacy(position);
                 return;
             }
         if (_display != IntPtr.Zero && _unityWindow != IntPtr.Zero)
         {
-            if (currentDesktopEnv == DesktopEnvironments.Hyprland){
+            if (_currentDesktopEnv == DesktopEnvironments.Hyprland){
                 WaylandUtility.SetWindowPositionHyprland(position);
                 return;
             }
-            var atom = XInternAtom(_display, "_NET_MOVERESIZE_WINDOW", true);
-            if (atom == IntPtr.Zero)
+            if (_netMoveResizeWindow == IntPtr.Zero)
             {
                 ShowError("Cannot find atom for _NET_MOVERESIZE_WINDOW!");
                 return;
@@ -244,7 +250,7 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
             {
                 type = ClientMessage,
                 window = _unityWindow,
-                message_type = atom,
+                message_type = _netMoveResizeWindow,
                 format = 32,
                 data = new IntPtr[5]
             };
@@ -283,6 +289,7 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
         
     public void QueryMonitors()
     {
+        _monitors = new List<Rect>();
         _monitors.Clear();
         if (_display == IntPtr.Zero) return;
             
@@ -370,8 +377,41 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
 
         return Vector2.zero;
     }
-        
+
     public void SetWindowSize(Vector2 size)
+    {
+        if (SaveLoadHandler.Instance.data.useLegacyMoveResizeCalls)
+        {
+            SetWindowSizeLegacy(size);
+            return;
+        }
+        if (_display != IntPtr.Zero && _unityWindow != IntPtr.Zero)
+        {
+            if (_netMoveResizeWindow == IntPtr.Zero)
+            {
+                ShowError("Cannot find atom for _NET_MOVERESIZE_WINDOW!");
+                return;
+            }
+            var xClient = new XClientMessageEvent
+            {
+                type = ClientMessage,
+                window = _unityWindow,
+                message_type = _netMoveResizeWindow,
+                format = 32,
+                data = new IntPtr[5]
+            };
+            xClient.data[0] = new IntPtr((1 << 12) | (1 << 10) | (1 << 11));
+            xClient.data[1] = IntPtr.Zero;
+            xClient.data[2] = IntPtr.Zero;
+            xClient.data[3] = new((int)size.x);
+            xClient.data[4] = new((int)size.y);
+
+            XSendEvent(_display, _rootWindow, false, SubstructureRedirectMask | SubstructureNotifyMask, ref xClient);
+            XFlush(_display);
+        }
+    }
+
+    private void SetWindowSizeLegacy(Vector2 size)
     {
         if (_display != IntPtr.Zero && _unityWindow != IntPtr.Zero)
         {
@@ -575,15 +615,13 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
 #if UNITY_EDITOR
         return;
 #endif
-        var wmStateAbove = XInternAtom(_display, "_NET_WM_STATE_ABOVE", true);
-        if (wmStateAbove == IntPtr.Zero)
+        if (_netWmStateAbove == IntPtr.Zero)
         {
             ShowError("Cannot find atom for _NET_WM_STATE_ABOVE!");
             return;
         }
 
-        var wmNetWmState = XInternAtom(_display, "_NET_WM_STATE", true);
-        if (wmNetWmState == IntPtr.Zero)
+        if (_netWmState == IntPtr.Zero)
         {
             ShowError("Cannot find atom for _NET_WM_STATE!");
             return;
@@ -593,26 +631,23 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
         {
             type = ClientMessage,
             window = _unityWindow,
-            message_type = wmNetWmState,
+            message_type = _netWmState,
             format = 32,
             data = new IntPtr[5]
         };
         xClient.data[0] = new IntPtr(topmost ? 1 : 0); // 1=ADD, 0=REMOVE
-        xClient.data[1] = wmStateAbove;
+        xClient.data[1] = _netWmStateAbove;
         xClient.data[2] = IntPtr.Zero;
         xClient.data[3] = IntPtr.Zero;
         xClient.data[4] = IntPtr.Zero;
 
-        XSendEvent(_display, _rootWindow, false, 0x00100000 | 0x00080000, ref xClient);
+        XSendEvent(_display, _rootWindow, false, 0x00100000 | SubstructureRedirectMask, ref xClient);
         XFlush(_display);
     }
         
     public void HideFromTaskbar(bool reallyHide = true)
     {
-        var netWmState = XInternAtom(_display, "_NET_WM_STATE", false);
-        var skipTaskbar = XInternAtom(_display, "_NET_WM_STATE_SKIP_TASKBAR", false);
-
-        if (netWmState == IntPtr.Zero || skipTaskbar == IntPtr.Zero)
+        if (_netWmState == IntPtr.Zero || _netWmStateSkipTaskbar == IntPtr.Zero)
             return;
 
         XClientMessageEvent msg = new()
@@ -620,12 +655,12 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
             type = ClientMessage,
             display = _display,
             window = _unityWindow,
-            message_type = netWmState,
+            message_type = _netWmState,
             format = 32,
             data = new IntPtr[5]
         };
         msg.data[0] = new(reallyHide ? 1 : 0);
-        msg.data[1] = skipTaskbar;
+        msg.data[1] = _netWmStateSkipTaskbar;
         msg.data[2] = IntPtr.Zero;
         msg.data[3] = IntPtr.Zero;
         msg.data[4] = new(1);
@@ -640,7 +675,6 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
         if (_display == IntPtr.Zero || _unityWindow == IntPtr.Zero) return;
 
         // Remove window decorations using Motif hints
-        var motifHintsAtom = XInternAtom(_display, "_MOTIF_WM_HINTS", false);
         var hints = new XMotifWmHints
         {
             flags = (IntPtr)MwmHintsFlags,
@@ -862,12 +896,14 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
         if (transparentInputEnabled) return;
         SetupTransparentInput();
         transparentInputEnabled = true;
+        running = true;
         // Create a dedicated thread instead of Task.Run
-        _x11EventThread = new Thread(ApplyShaping);
-    
-        // Very important: This ensures the thread closes if the game exits
-        _x11EventThread.IsBackground = true; 
-    
+        _x11EventThread = new Thread(ApplyShaping)
+        {
+            // Very important: This ensures the thread closes if the game exits
+            IsBackground = true
+        };
+
         _x11EventThread.Start();
     }
 
@@ -967,7 +1003,7 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
 
     private void UpdateInputMask(int width, int height)
     {
-        if (isDragging || !running)
+        if (_isDragging || !running)
             return;
         
         // Throttle: Only proceed if enough time has passed
@@ -1097,9 +1133,11 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
     private IntPtr _display;
     private IntPtr _rootWindow;
     private IntPtr _unityWindow;
-    private List<Rect> _monitors = new();
-    private IntPtr _netWmState, _netWmStateFullscreen, _netWmStateMaxHorz, _netWmStateMaxVert;
+    private List<Rect> _monitors;
+    private IntPtr _netWmState, _netWmStateFullscreen, _netWmStateMaxHorz, _netWmStateMaxVert, _netWmStateAbove, _netWmStateSkipTaskbar;
     private IntPtr _netWmWindowType;
+    private IntPtr _netMoveResizeWindow;
+    private IntPtr motifHintsAtom;
 
     // X11 Constants
     private const int XaCardinal = 6;
@@ -1112,7 +1150,13 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
     private IntPtr damage = IntPtr.Zero;
     private bool running = true;
     private Thread _x11EventThread;
-    private Stopwatch _shapingStopwatch = new();
+    private Stopwatch _shapingStopwatch;
+
+    public WindowManager(Vector2 initialWindowPos)
+    {
+        this._initialWindowPos = initialWindowPos;
+    }
+
     private const long ShapingThrottleMs = 100; // Update mask every 100ms
         
     private const long MwmHintsFlags = 1L << 1; // Use decorations

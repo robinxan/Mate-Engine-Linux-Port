@@ -5,6 +5,8 @@ using Random = UnityEngine.Random;
 
 public class AvatarWindowHandler : MonoBehaviour
 {
+    private static readonly int IsWindowSit = Animator.StringToHash("isWindowSit");
+    private static readonly int IsTaskbarSit = Animator.StringToHash("isTaskbarSit");
     public float desktopScale = 1f;
     public int snapThreshold = 30;
     [Header("Window Sit BlendTree")]
@@ -46,7 +48,7 @@ public class AvatarWindowHandler : MonoBehaviour
         if (isSittingNow && !wasSitting)
         {
             int sitIdx = Random.Range(0, totalWindowSitAnimations);
-            animator.SetFloat("WindowSitIndexParam", sitIdx);
+            animator.SetFloat("WindowSitIndex", sitIdx);
         }
         wasSitting = isSittingNow;
 
@@ -102,7 +104,9 @@ public class AvatarWindowHandler : MonoBehaviour
             if (!snapRect.Overlaps(topBar)) continue;
             _snappedHwnd = entry.Hwnd;
             _snappedRect = entry.Rect;
-            animator.SetBool("IsWindowSit", true);
+            animator.SetBool(IsWindowSit, true);
+            animator.SetBool(IsTaskbarSit, entry.IsDock);
+            animator.Update(0f);
             lastDesktopPosition = unityPos;
             horizontalOffset = unityPos.x - entry.Rect.x;
         }
@@ -144,16 +148,16 @@ public class AvatarWindowHandler : MonoBehaviour
         {
             if (!WindowManager.Instance.GetWindowRect(hWnd, out Rect r)) continue;
             string cls = WindowManager.Instance.GetClassName(hWnd);
-            bool isTaskbar = WindowManager.Instance.IsDock(hWnd);
+            bool isDock = WindowManager.Instance.IsDock(hWnd);
 
-            if (!isTaskbar)
+            if (!isDock)
             {
                 if (r.width < 100 || r.height < 100) continue;
                 if (cls.Length == 0) continue;
                 if (WindowManager.Instance.IsDesktop(hWnd)) continue;
             }
 
-            cachedWindows.Add(new WindowEntry { Hwnd = hWnd, Rect = r });
+            cachedWindows.Add(new WindowEntry { Hwnd = hWnd, Rect = r, IsDock = isDock});
         }
         lastCacheUpdateTime = Time.time;
     }
@@ -161,11 +165,10 @@ public class AvatarWindowHandler : MonoBehaviour
     void ExitWindowSitting()
     {
         _snappedHwnd = IntPtr.Zero;
-        animator.SetBool("IsWindowSit", false);
-        animator.SetBool("IsSitting", false);
+        animator.SetBool(IsWindowSit, false);
     }
 
-    struct WindowEntry { public IntPtr Hwnd; public Rect Rect; }
+    struct WindowEntry { public IntPtr Hwnd; public Rect Rect; public bool IsDock; }
 
     Vector2 GetUnityWindowPosition() => WindowManager.Instance.GetWindowPosition();
 

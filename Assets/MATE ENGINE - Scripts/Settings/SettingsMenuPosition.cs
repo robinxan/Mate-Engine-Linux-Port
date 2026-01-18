@@ -37,7 +37,7 @@ public class SettingsMenuPosition : MonoBehaviour
     {
         if (WindowManager.Instance == null)
         {
-            Debug.LogError("X11Manager.Instance is null. SettingsMenuPosition requires X11Manager to be present.");
+            Debug.LogError("WindowManager.Instance is null. SettingsMenuPosition requires WindowManager to be present.");
             enabled = false;
             return;
         }

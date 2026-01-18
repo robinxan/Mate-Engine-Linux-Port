@@ -10,7 +10,7 @@ public class LinuxSpecificSettings : MonoBehaviour
     
     public Texture2D icon;
     
-    private bool useXMoveWindow;
+    private bool useLegacyMoveResizeCalls;
     private bool enableAutoMemoryTrim;
 
     private Rect windowRect;
@@ -100,12 +100,12 @@ public class LinuxSpecificSettings : MonoBehaviour
         intro.Yalign = 0.5f;
         cardBox.PackStart(intro, false, false, 0);
         
-        var check1 = new CheckButton("Use XMoveWindow instead of _NET_MOVERESIZE_WINDOW") {Active = SaveLoadHandler.Instance.data.useXMoveWindow, UseUnderline = false};
+        var check1 = new CheckButton("Use XMoveWindow and XResizeWindow instead of _NET_MOVERESIZE_WINDOW") {Active = SaveLoadHandler.Instance.data.useLegacyMoveResizeCalls, UseUnderline = false};
         ((Label)check1.Child).Xalign = 0.0f;
         ((Label)check1.Child).Yalign = 0.5f;
         cardBox.PackStart(check1, false, false, 0);
 
-        var desc1 = CreateDescriptionLabel("XMoveWindow bypasses WM and updates the window’s origin directly, which can leave window decorations out of sync. _NET_MOVERESIZE_WINDOW protocol sends a message to ask WM to move MateEngine window as a complete, decorated unit on every modern Linux desktop while respecting the user’s compositor animations and tiling rules.\n\nOnly use XMoveWindow in case that you cannot drag and move your avatar at all.");
+        var desc1 = CreateDescriptionLabel("Both XMoveWindow and XResizeWindow bypass WM and updates the window’s origin directly, which can leave window decorations out of sync. _NET_MOVERESIZE_WINDOW protocol sends a message to ask WM to move and resize MateEngine window as a complete, decorated unit on every modern Linux desktop while respecting the user’s compositor animations and tiling rules.\n\nOnly use XMoveWindow in case that you cannot drag and move your avatar or toggle window size at all.");
         cardBox.PackStart(desc1, false, false, 0);
         
         var check2 = new CheckButton("Enable Periodic Memory Optimization") {Active = SaveLoadHandler.Instance.data.enableAutoMemoryTrim, UseUnderline = false};
@@ -130,7 +130,7 @@ public class LinuxSpecificSettings : MonoBehaviour
         continueBtn.Clicked += (_, _) =>
         {
             ShowWindow(false);
-            SaveLoadHandler.Instance.data.useXMoveWindow = check1.Active;
+            SaveLoadHandler.Instance.data.useLegacyMoveResizeCalls = check1.Active;
             SaveLoadHandler.Instance.data.enableAutoMemoryTrim = check2.Active;
             FindFirstObjectByType<SettingsHandlerToggles>().ApplySettings();
             SaveLoadHandler.Instance.SaveToDisk();
@@ -223,8 +223,8 @@ public class LinuxSpecificSettings : MonoBehaviour
 
         GUILayout.Space(20f);
         
-        useXMoveWindow = GUILayout.Toggle(useXMoveWindow, "Use XMoveWindow instead of _NET_MOVERESIZE_WINDOW");
-        GUILayout.Label("XMoveWindow bypasses WM and updates the window’s origin directly, which can leave window decorations out of sync. _NET_MOVERESIZE_WINDOW protocol sends a message to ask WM to move MateEngine window as a complete, decorated unit on every modern Linux desktop while respecting the user’s compositor animations and tiling rules.\n\nOnly use XMoveWindow in case that you cannot drag and move your avatar at all.");
+        useLegacyMoveResizeCalls = GUILayout.Toggle(useLegacyMoveResizeCalls, "Use XMoveWindow and XResizeWindow instead of _NET_MOVERESIZE_WINDOW");
+        GUILayout.Label("Both XMoveWindow and XResizeWindow bypass WM and updates the window’s origin directly, which can leave window decorations out of sync. _NET_MOVERESIZE_WINDOW protocol sends a message to ask WM to move and resize MateEngine window as a complete, decorated unit on every modern Linux desktop while respecting the user’s compositor animations and tiling rules.\n\nOnly use XMoveWindow in case that you cannot drag and move your avatar or toggle window size at all.");
 
         GUILayout.Space(10f);
         
@@ -240,7 +240,7 @@ public class LinuxSpecificSettings : MonoBehaviour
         }
         if (GUILayout.Button("OK"))
         {
-            SaveLoadHandler.Instance.data.useXMoveWindow = useXMoveWindow;
+            SaveLoadHandler.Instance.data.useLegacyMoveResizeCalls = useLegacyMoveResizeCalls;
             SaveLoadHandler.Instance.data.enableAutoMemoryTrim = enableAutoMemoryTrim;
             FindFirstObjectByType<SettingsHandlerToggles>().ApplySettings();
             SaveLoadHandler.Instance.SaveToDisk();
