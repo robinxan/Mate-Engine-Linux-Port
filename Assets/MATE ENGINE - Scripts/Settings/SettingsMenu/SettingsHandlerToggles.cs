@@ -180,6 +180,7 @@ public class SettingsHandlerToggles : MonoBehaviour
         foreach (var amm in Resources.FindObjectsOfTypeAll<AvatarMinecraftMessages>())
             amm.enableMinecraftMessages = data.enableMinecraftMessages;
 
+        WindowManager.Instance.SetWindowType(data.windowType);
     }
 
     public void ResetToDefaults()
@@ -225,6 +226,7 @@ public class SettingsHandlerToggles : MonoBehaviour
         data.enableRandomAvatar = false;
         data.useLegacyMoveResizeCalls = false;
         data.verboseDiscordRPCLog = false;
+        data.windowType = WindowType.Normal;
         
         SaveLoadHandler.Instance.SaveToDisk();
         ApplySettings();

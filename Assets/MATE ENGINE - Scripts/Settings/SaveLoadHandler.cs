@@ -186,6 +186,7 @@ public class SaveLoadHandler : MonoBehaviour
         [JsonProperty("useXMoveWindow")]
         public bool useLegacyMoveResizeCalls = false;
         public bool verboseDiscordRPCLog = false;
+        public WindowType windowType = WindowType.Normal;
 
         //ALARM
         [Serializable]

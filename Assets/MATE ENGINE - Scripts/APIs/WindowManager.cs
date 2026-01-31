@@ -1,9 +1,10 @@
+#pragma warning disable 0162
+//#pragma warning disable 0168
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Threading;
-using System.Linq;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using Debug = UnityEngine.Debug;
@@ -107,10 +108,11 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
         {
             _unityWindow = windows[0]; // Typically the first is the main window
             Debug.Log($"Unity window handle: 0x{_unityWindow.ToInt64():X}");
-#if !UNITY_EDITOR
-                SetWindowBorderless();
-#endif
             QueryMonitors();
+#if UNITY_EDITOR
+            return;
+#endif
+            SetWindowBorderless();
         }
         else
         {
@@ -154,10 +156,12 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
         _netWmStateMaxHorz = XInternAtom(_display, "_NET_WM_STATE_MAXIMIZED_HORZ", false);
         _netWmStateMaxVert = XInternAtom(_display, "_NET_WM_STATE_MAXIMIZED_VERT", false);
         _netWmWindowType = XInternAtom(_display, "_NET_WM_WINDOW_TYPE", false);
-        _netMoveResizeWindow = XInternAtom(_display, "_NET_MOVERESIZE_WINDOW", true);
-        _netWmStateAbove = XInternAtom(_display, "_NET_WM_STATE_ABOVE", true);
-        _netWmStateSkipTaskbar = XInternAtom(_display, "_NET_WM_STATE_SKIP_TASKBAR", true);
-        motifHintsAtom = XInternAtom(_display, "_MOTIF_WM_HINTS", false);
+        _netMoveResizeWindow = XInternAtom(_display, "_NET_MOVERESIZE_WINDOW", false);
+        _netWmStateAbove = XInternAtom(_display, "_NET_WM_STATE_ABOVE", false);
+        _netWmStateSkipTaskbar = XInternAtom(_display, "_NET_WM_STATE_SKIP_TASKBAR", false);
+        _netWmWindowTypeDock = XInternAtom(_display, "_NET_WM_WINDOW_TYPE_DOCK", false);
+        _netWmWindowTypeNormal = XInternAtom(_display, "_NET_WM_WINDOW_TYPE_NORMAL", false);
+        _motifHintsAtom = XInternAtom(_display, "_MOTIF_WM_HINTS", false);
     }
         
     private int ShowError(IntPtr display, IntPtr e)
@@ -286,6 +290,25 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
         }
         return Vector2.zero;
     }
+    
+    public void SetWindowPositionMonitorRelative(int monitorIndex, Vector2 relativePos)
+    {
+        if (_monitors == null || _monitors.Count == 0)
+            QueryMonitors();
+
+        if (monitorIndex < 0 || monitorIndex >= _monitors?.Count)
+            return;
+
+        if (_monitors == null) return;
+        var monitorRect = _monitors[monitorIndex];
+
+        var absolutePos = new Vector2(
+            monitorRect.x + relativePos.x,
+            monitorRect.y + relativePos.y
+        );
+
+        SetWindowPosition(absolutePos);
+    }
         
     public void QueryMonitors()
     {
@@ -305,7 +328,7 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
             return;
         }
 
-        var resHandle = XRRGetScreenResources(_display, _rootWindow);
+        var resHandle = XRRGetScreenResourcesCurrent(_display, _rootWindow);
         var res = Marshal.PtrToStructure<XrrScreenResources>(resHandle);
             
         if (res.noutput <= 0)
@@ -319,7 +342,7 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
             var output = Marshal.ReadIntPtr(res.outputs, i * IntPtr.Size);
             var outInfoHandle = XRRGetOutputInfo(_display, resHandle, output);
             var outInfo = Marshal.PtrToStructure<XrrOutputInfo>(outInfoHandle);
-            if (outInfo.connection == 0 || outInfo.crtc == IntPtr.Zero)  // Disconnected or no CRTC
+            if (outInfo.connection != Connection.Connected || outInfo.crtc == IntPtr.Zero)
             {
                 XRRFreeOutputInfo(outInfoHandle);
                 continue;
@@ -327,14 +350,13 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
 
             var crtcInfoHandle = XRRGetCrtcInfo(_display, resHandle, outInfo.crtc);
             var crtcInfo = Marshal.PtrToStructure<XrrCrtcInfo>(crtcInfoHandle);
-            if (crtcInfo.width == 0 || crtcInfo.height == 0)
+            if (crtcInfo.width == 0 || crtcInfo.height == 0 || crtcInfoHandle == IntPtr.Zero)
             {
                 XRRFreeCrtcInfo(crtcInfoHandle);
                 XRRFreeOutputInfo(outInfoHandle);
                 continue;
             }
 
-            // Create Rect: absolute x,y from CRTC, width/height from mode
             var monRect = new Rect(crtcInfo.x, crtcInfo.y, crtcInfo.width, crtcInfo.height);
             _monitors.Add(monRect);
 
@@ -350,6 +372,7 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
             _monitors.Add(new Rect(0, 0, XDisplayWidth(_display, 0), XDisplayHeight(_display, 0)));
         }
     }
+
 
     private string GetWindowType(IntPtr hwnd)  // Returns type atom name or empty
     {
@@ -479,13 +502,19 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
         
     public Rect GetMonitorRectFromPoint(Vector2 point)
     {
-        return _monitors.FirstOrDefault(mon => mon.Contains(point));
+        foreach (var mon in _monitors)
+        {
+            if (mon.Contains(point)) return mon;
+        }
+
+        return new Rect();
     }
         
     public Rect GetMonitorRectFromWindow(IntPtr window)
     {
         if (!GetWindowRect(window, out var winRect)) return new Rect();
         var center = new Vector2(winRect.x + winRect.width / 2, winRect.y + winRect.height / 2);
+        print(GetMonitorRectFromPoint(center));
         return GetMonitorRectFromPoint(center);
     }
         
@@ -675,7 +704,7 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
         if (_display == IntPtr.Zero || _unityWindow == IntPtr.Zero) return;
 
         // Remove window decorations using Motif hints
-        var hints = new XMotifWmHints
+        object hints = new XMotifWmHints
         {
             flags = (IntPtr)MwmHintsFlags,
             decorations = (IntPtr)MwmDecorationsNone,
@@ -683,11 +712,40 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
             input_mode = IntPtr.Zero,
             status = IntPtr.Zero
         };
-        XChangeProperty(_display, _unityWindow, motifHintsAtom, motifHintsAtom, 32, PropModeReplace, ref hints, 5);
-
+        ChangeProperty(_motifHintsAtom, _motifHintsAtom, 32, PropModeReplace, hints, 5);
         XFlush(_display);
     }
-        
+    
+    private void ChangeProperty<T>(IntPtr property, IntPtr type, int format, int mode, T data, int nelements)
+    {
+        GCHandle handle = GCHandle.Alloc(data, GCHandleType.Pinned);
+        try
+        {
+            IntPtr ptr = handle.AddrOfPinnedObject();
+            XChangeProperty(_display, _unityWindow, property, type, format, mode, ptr, nelements);
+        }
+        finally
+        {
+            handle.Free();
+        }
+    }
+
+    public void SetWindowType(WindowType type)
+    {
+        switch (type)
+        {
+            case WindowType.Dock:
+                ChangeProperty(_netWmWindowType, (IntPtr)XaAtom, 32, PropModeReplace, _netWmWindowTypeDock, 1);
+                break;
+            case WindowType.Normal:
+                ChangeProperty(_netWmWindowType, (IntPtr)XaAtom, 32, PropModeReplace, _netWmWindowTypeNormal, 1);
+                break;
+            default:
+                ShowError("What was that?");
+                break;
+        }
+    }
+
     public string GetClassName(IntPtr window)
     {
         if (XGetClassHint(_display, window, out var hint) != 0)
@@ -1135,16 +1193,16 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
     private IntPtr _unityWindow;
     private List<Rect> _monitors;
     private IntPtr _netWmState, _netWmStateFullscreen, _netWmStateMaxHorz, _netWmStateMaxVert, _netWmStateAbove, _netWmStateSkipTaskbar;
-    private IntPtr _netWmWindowType;
+    private IntPtr _netWmWindowType, _netWmWindowTypeDock, _netWmWindowTypeNormal;
     private IntPtr _netMoveResizeWindow;
-    private IntPtr motifHintsAtom;
+    private IntPtr _motifHintsAtom;
 
     // X11 Constants
     private const int XaCardinal = 6;
     private const int XaAtom = 4;
     private const int IsViewable = 2;
     private const int XaWindow = 33;
-        
+
     private bool transparentInputEnabled;
     private int damageEventBase;
     private IntPtr damage = IntPtr.Zero;
@@ -1433,15 +1491,6 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
     }
         
     [StructLayout(LayoutKind.Sequential)]
-    private struct XrrScreenSize
-    {
-        public int width;
-        public int height;
-        public int mwidth;
-        public int mheight;
-    }
-        
-    [StructLayout(LayoutKind.Sequential)]
     private struct XrrScreenResources
     {
         public IntPtr timestamp;
@@ -1496,7 +1545,7 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
     }
         
     [Flags]
-    private enum Rotation : ushort
+    private enum Rotation
     {
         Rotate0   = 1 << 0,
         Rotate90  = 1 << 1,
@@ -1617,11 +1666,7 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
 
     [DllImport(LibX11)]
     private static extern int XChangeProperty(IntPtr display, IntPtr window, IntPtr property, IntPtr type,
-        int format, int mode, ref XMotifWmHints data, int nItems);
-        
-    [DllImport(LibX11)]
-    private static extern int XChangeProperty(IntPtr display, IntPtr window, IntPtr property, IntPtr type,
-        int format, int mode, ref int data, int nItems);
+        int format, int mode, [In, Out] IntPtr data, int nItems);
 
     [DllImport(LibX11)]
     private static extern int XSelectInput(IntPtr display, IntPtr window, long eventMask);
@@ -1691,7 +1736,7 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
     private static extern int XRRQueryVersion(IntPtr display, out int major, out int minor);
 
     [DllImport(LibXRandR)]
-    private static extern IntPtr XRRGetScreenResources(IntPtr display, IntPtr window);
+    private static extern IntPtr XRRGetScreenResourcesCurrent(IntPtr display, IntPtr window);
 
     [DllImport(LibXRandR)]
     private static extern void XRRFreeScreenResources(IntPtr resources);

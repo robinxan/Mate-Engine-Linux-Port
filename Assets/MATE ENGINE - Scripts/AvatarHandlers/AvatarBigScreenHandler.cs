@@ -2,7 +2,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
- // Assuming X11 namespace from X11Manager
 
 public class AvatarBigScreenHandler : MonoBehaviour
 {
@@ -261,8 +260,8 @@ public class AvatarBigScreenHandler : MonoBehaviour
             }
         }
     }
-
-    Rect FindBestMonitorRect(Rect windowRect)
+    
+    private Rect FindBestMonitorRect(Rect windowRect)
     {
         if (WindowManager.Instance == null) return new Rect(0, 0, Screen.currentResolution.width, Screen.currentResolution.height);
         
@@ -316,9 +315,9 @@ public class AvatarBigScreenHandler : MonoBehaviour
             if (WindowManager.Instance.GetWindowRect(unityWindow, out Rect windowRect))
             {
                 Rect targetScreen = FindBestMonitorRect(windowRect);
-                WindowManager.Instance.SetWindowPosition(targetScreen.position);
-                WindowManager.Instance.SetWindowSize(new Vector2(targetScreen.width, targetScreen.height));
-                originalWindowRect = windowRect; originalRectSet = true;
+                WindowManager.Instance.SetWindowPosition(targetScreen.x, targetScreen.y);
+                originalWindowRect = windowRect;
+                originalRectSet = true;
             }
         }
         if (!toFadeY && MainCamera != null)

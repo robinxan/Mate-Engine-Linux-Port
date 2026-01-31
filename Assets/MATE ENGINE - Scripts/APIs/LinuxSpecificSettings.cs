@@ -2,6 +2,12 @@ using Gtk;
 using UnityEngine;
 using Application = Gtk.Application;
 
+public enum WindowType
+{
+    Normal = 0,
+    Dock = 1
+}
+
 public class LinuxSpecificSettings : MonoBehaviour
 {
     private Window window;
@@ -12,6 +18,9 @@ public class LinuxSpecificSettings : MonoBehaviour
     
     private bool useLegacyMoveResizeCalls;
     private bool enableAutoMemoryTrim;
+    private WindowType windowType; // 0 for Normal, 1 for Dock
+    
+    private Vector2 scrollPos;
 
     private Rect windowRect;
     private bool showWindow;
@@ -29,7 +38,7 @@ public class LinuxSpecificSettings : MonoBehaviour
             WindowPosition = WindowPosition.Center,
             TransientFor = GtkX11Helper.Instance.DummyParent
         };
-        window.SetDefaultSize(660, 520);
+        window.SetDefaultSize(783, 554);
         window.Destroyed += (s, e) =>
         {
             ShowWindow(false);
@@ -75,7 +84,9 @@ public class LinuxSpecificSettings : MonoBehaviour
         
         var contentBox = new Box(Orientation.Vertical, 28)
         {
-            MarginEnd = 50
+            MarginTop = 20,
+            MarginEnd = 50,
+            MarginBottom = 20
         };
         mainBox.PackStart(contentBox, true, true, 0);
         
@@ -88,9 +99,14 @@ public class LinuxSpecificSettings : MonoBehaviour
         contentBox.PackStart(title, false, false, 0);
         
         var card = new Frame { Name = "card", ShadowType = ShadowType.None };
-        var cardBox = new Box(Orientation.Vertical, 20) { BorderWidth = 24 };
-        card.Add(cardBox);
         contentBox.PackStart(card, true, true, 0);
+        
+        var scrolledWindow = new ScrolledWindow();
+        scrolledWindow.SetPolicy(PolicyType.Never, PolicyType.Automatic);
+        card.Add(scrolledWindow);
+        
+        var cardBox = new Box(Orientation.Vertical, 20) { BorderWidth = 24 };
+        scrolledWindow.Add(cardBox);
         
         var intro = new Label("These options are only provided for Linux, and they could act differently on different distros.")
         {
@@ -101,6 +117,7 @@ public class LinuxSpecificSettings : MonoBehaviour
         cardBox.PackStart(intro, false, false, 0);
         
         var check1 = new CheckButton("Use XMoveWindow and XResizeWindow instead of _NET_MOVERESIZE_WINDOW") {Active = SaveLoadHandler.Instance.data.useLegacyMoveResizeCalls, UseUnderline = false};
+        //check1.MarginTop = 40;
         ((Label)check1.Child).Xalign = 0.0f;
         ((Label)check1.Child).Yalign = 0.5f;
         cardBox.PackStart(check1, false, false, 0);
@@ -115,6 +132,20 @@ public class LinuxSpecificSettings : MonoBehaviour
 
         var desc2 = CreateDescriptionLabel("This feature reduces MateEngine's physical RAM usage by releasing inactive memory pages and returning freed heap memory to the system. It proactively frees RAM for better multitasking on low-memory devices.\n\nNote: To safely preserve modified data, some pages may be temporarily written to swap space (virtual memory on disk). This can cause a short-term increase in swap usage, but the data reloads quickly if needed. Minor hitches may occur if frequently accessed data is reloaded.\n\nRecommended for systems with 16GB RAM or less. Require at least 1 GiB swap space.");
         cardBox.PackStart(desc2, false, false, 0);
+
+        var hbox = new Box(Orientation.Horizontal, 5);
+        cardBox.PackStart(hbox, false, false, 0);
+
+        var label = new Label("Window Type");
+        label.Xalign = 0.0f;
+        label.Yalign = 0.5f;
+        hbox.PackStart(label, false, false, 0);
+
+        var comboBox = new ComboBox(new[] { "Normal", "Dock" }){Active = (int)SaveLoadHandler.Instance.data.windowType};
+        hbox.PackStart(comboBox, false, false, 0);
+        
+        var desc3 = CreateDescriptionLabel("In Mutter (the WM used in GNOME and Cinnamon), normal windows are constrained to on-screen positioning in API calls.\n\nChanging ME's window type to Dock will remove these constraints, but may also change how the window behaves.\n\nIf unsure, leave it normal.");
+        cardBox.PackStart(desc3, false, false, 0);
         
         var buttonBox = new Box(Orientation.Horizontal, 20) { Halign = Align.End };
         contentBox.PackEnd(buttonBox, false, false, 0);
@@ -132,6 +163,7 @@ public class LinuxSpecificSettings : MonoBehaviour
             ShowWindow(false);
             SaveLoadHandler.Instance.data.useLegacyMoveResizeCalls = check1.Active;
             SaveLoadHandler.Instance.data.enableAutoMemoryTrim = check2.Active;
+            SaveLoadHandler.Instance.data.windowType = (WindowType)comboBox.Active;
             FindFirstObjectByType<SettingsHandlerToggles>().ApplySettings();
             SaveLoadHandler.Instance.SaveToDisk();
         };
@@ -165,8 +197,8 @@ public class LinuxSpecificSettings : MonoBehaviour
         var label = new Label(text)
         {
             LineWrap = true,
-            MaxWidthChars = 60,
-            LineWrapMode = Pango.WrapMode.WordChar,
+            //MaxWidthChars = 60,
+            //LineWrapMode = Pango.WrapMode.WordChar,
             UseUnderline = false
         };
         label.Xalign = 0.0f;
@@ -221,6 +253,8 @@ public class LinuxSpecificSettings : MonoBehaviour
         
         GUILayout.Label("These options are only provided for Linux, and they could act differently on different distros.");
 
+        scrollPos = GUILayout.BeginScrollView(scrollPos, GUILayout.Height(250f));
+        
         GUILayout.Space(20f);
         
         useLegacyMoveResizeCalls = GUILayout.Toggle(useLegacyMoveResizeCalls, "Use XMoveWindow and XResizeWindow instead of _NET_MOVERESIZE_WINDOW");
@@ -229,8 +263,22 @@ public class LinuxSpecificSettings : MonoBehaviour
         GUILayout.Space(10f);
         
         enableAutoMemoryTrim = GUILayout.Toggle(enableAutoMemoryTrim, "Enable Periodic Memory Optimization");
+
         GUILayout.Label("This feature reduces the game's physical RAM usage by releasing inactive memory pages and returning freed heap memory to the system. It proactively frees RAM for better multitasking on low-memory devices.\n\nNote: To safely preserve modified data, some pages may be temporarily written to swap space (virtual memory on disk). This can cause a short-term increase in swap usage, but the data reloads quickly if needed. Minor hitches may occur if frequently accessed data is reloaded.\n\nRecommended for systems with 16GB RAM or less.");
 
+        GUILayout.Space(10f);
+        
+        GUILayout.BeginHorizontal();
+        GUILayout.Label("Window Type", GUILayout.Width(100));
+        
+        windowType = (WindowType)GUILayout.SelectionGrid((int)windowType, new [] { "Normal", "Dock" }, 2);
+        GUILayout.EndHorizontal();
+
+        GUILayout.Label("In Mutter (the WM used in GNOME and Cinnamon), normal windows are constrained to on-screen positioning in API calls.\n\nChanging ME's window type to Dock will remove these constraints, but may also change how the window behaves.\n\nIf unsure, leave it normal.", 
+            GUI.skin.GetStyle("label"), GUILayout.ExpandHeight(false));
+        
+        GUILayout.EndScrollView();
+        
         GUILayout.FlexibleSpace();
         
         GUILayout.BeginHorizontal(GUILayout.ExpandWidth(false));
@@ -242,6 +290,8 @@ public class LinuxSpecificSettings : MonoBehaviour
         {
             SaveLoadHandler.Instance.data.useLegacyMoveResizeCalls = useLegacyMoveResizeCalls;
             SaveLoadHandler.Instance.data.enableAutoMemoryTrim = enableAutoMemoryTrim;
+            SaveLoadHandler.Instance.data.windowType = windowType;
+
             FindFirstObjectByType<SettingsHandlerToggles>().ApplySettings();
             SaveLoadHandler.Instance.SaveToDisk();
             ShowWindow(false);

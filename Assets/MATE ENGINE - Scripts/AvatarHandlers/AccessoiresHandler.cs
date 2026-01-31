@@ -1,5 +1,4 @@
 using UnityEngine;
-using System.Collections;
 using System.Collections.Generic;
 
 public class AccessoiresHandler : MonoBehaviour
@@ -12,14 +11,8 @@ public class AccessoiresHandler : MonoBehaviour
         public HumanBodyBones targetBone;
         public GameObject linkedObject;
         [Range(0f, 1f)] public float smoothness = 0f;
-        public bool steamExclusive = false;
         public Vector3 positionOffset = Vector3.zero;
     }
-
-    public int steamAppId = 0;
-    public int ttlDays = 14;
-    public float retrySeconds = 5f;
-    public float maxWaitSeconds = 180f;
 
     public Animator animator;
     public List<AccessoryRule> rules = new List<AccessoryRule>();
@@ -67,8 +60,7 @@ public class AccessoiresHandler : MonoBehaviour
 
             bool shouldBeActive =
                 featureEnabled &&
-                rule.isEnabled &&
-                (!rule.steamExclusive);
+                rule.isEnabled;
 
             if (tracking.obj != null && tracking.lastActiveState != shouldBeActive)
             {
