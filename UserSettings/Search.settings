@@ -18,7 +18,7 @@ scopes = {
 	"picker_item_size.00000000" = "1"
 	"picker_inspector.00000000" = "0"
 	"OpenInspectorPreview.66F56946" = "0"
-	"currentGroup.66F56946" = "all"
+	"currentGroup.66F56946" = "menu"
 }
 providers = {
 	asset = {
@@ -85,6 +85,7 @@ providers = {
 objectSelectors = {
 }
 recentSearches = [
+	"font ass"
 	"prefer"
 	"custom pa"
 	"font a"
@@ -104,7 +105,6 @@ recentSearches = [
 	"st: MC_LO"
 	"st: MC_IN"
 	"st: mc_inf"
-	"st: message"
 ]
 searchItemFavorites = [
 ]

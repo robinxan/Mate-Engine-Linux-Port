@@ -1416,6 +1416,63 @@ MonoBehaviour:
     m_Localized: "Linux'e \xD6zg\xFC Ayarlar"
     m_Metadata:
       m_Items: []
+  - m_Id: 107786320805486592
+    m_Localized: These options are only provided for Linux, and they could act differently
+      on varied distros.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 107786555707482112
+    m_Localized: Use XMoveWindow and XResizeWindow instead of _NET_MOVERESIZE_WINDOW
+    m_Metadata:
+      m_Items: []
+  - m_Id: 107787011036930048
+    m_Localized: "Both XMoveWindow and XResizeWindow bypass WM and updates the window\u2019s
+      origin directly, which can leave window decorations out of sync. _NET_MOVERESIZE_WINDOW
+      protocol sends a message to ask WM to move and resize MateEngine window as
+      a complete, decorated unit on every modern Linux desktop while respecting the
+      user\u2019s compositor animations and tiling rules.\\n\\nOnly enable this option
+      in case that you cannot drag and move your avatar or toggle window size at
+      all."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 107787399546920960
+    m_Localized: Enable Periodic Memory Optimization
+    m_Metadata:
+      m_Items: []
+  - m_Id: 107787629541580800
+    m_Localized: 'This feature reduces MateEngine''s physical RAM usage by releasing
+      inactive memory pages and returning freed heap memory to the system. It proactively
+      frees RAM for better multitasking on low-memory devices.\n\nNote: To safely
+      preserve modified data, some pages may be temporarily written to swap space
+      (virtual memory on disk). This can cause a short-term increase in swap usage,
+      but the data reloads quickly if needed. Minor hitches may occur if frequently
+      accessed data is reloaded.\n\nRecommended for systems with 16GB RAM or less.
+      Require at least 1 GiB swap space.'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 107787868323307520
+    m_Localized: 'Window Type: '
+    m_Metadata:
+      m_Items: []
+  - m_Id: 107787947293663232
+    m_Localized: In Mutter (the WM used in GNOME and Cinnamon), normal windows are
+      constrained to on-screen positioning in API calls. Changing ME's window type
+      to Dock will remove these constraints, but may also change how the window behaves.\n\nIf
+      unsure, leave it normal.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 107788295882268672
+    m_Localized: Normal
+    m_Metadata:
+      m_Items: []
+  - m_Id: 107788836884570112
+    m_Localized: Dock
+    m_Metadata:
+      m_Items: []
+  - m_Id: 107789566945124352
+    m_Localized: Cancel
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds: []

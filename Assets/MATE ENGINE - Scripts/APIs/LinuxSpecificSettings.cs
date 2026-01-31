@@ -1,5 +1,7 @@
 using Gtk;
 using UnityEngine;
+using UnityEngine.Localization.Settings;
+using UnityEngine.Localization.Tables;
 using Application = Gtk.Application;
 
 public enum WindowType
@@ -10,6 +12,8 @@ public enum WindowType
 
 public class LinuxSpecificSettings : MonoBehaviour
 {
+    private StringTable stringTable; 
+    
     private Window window;
 
     public GameObject background;
@@ -28,6 +32,7 @@ public class LinuxSpecificSettings : MonoBehaviour
     private bool inEditor;
     public void Start()
     {
+        stringTable = LocalizationSettings.StringDatabase.GetTable("Languages (UI)");
         #if UNITY_EDITOR
         inEditor = true;
         return;
@@ -92,7 +97,7 @@ public class LinuxSpecificSettings : MonoBehaviour
         
         var title = new Label(null)
         {
-            Markup = "<span size=\"x-large\" weight=\"bold\">Linux-Specific Settings</span>"
+            Markup = $"<span size=\"x-large\" weight=\"bold\">{stringTable.GetEntry("LINUX_SPECIFIC").GetLocalizedString()}</span>"
         };
         title.Xalign = 0.0f;
         title.Yalign = 0.5f;
@@ -105,10 +110,10 @@ public class LinuxSpecificSettings : MonoBehaviour
         scrolledWindow.SetPolicy(PolicyType.Never, PolicyType.Automatic);
         card.Add(scrolledWindow);
         
-        var cardBox = new Box(Orientation.Vertical, 20) { BorderWidth = 24 };
+        var cardBox = new Box(Orientation.Vertical, 20);
         scrolledWindow.Add(cardBox);
-        
-        var intro = new Label("These options are only provided for Linux, and they could act differently on different distros.")
+
+        var intro = new Label(stringTable.GetEntry("LINUX_SPECIFIC_TIP").GetLocalizedString())
         {
             LineWrap = true
         };
@@ -116,42 +121,42 @@ public class LinuxSpecificSettings : MonoBehaviour
         intro.Yalign = 0.5f;
         cardBox.PackStart(intro, false, false, 0);
         
-        var check1 = new CheckButton("Use XMoveWindow and XResizeWindow instead of _NET_MOVERESIZE_WINDOW") {Active = SaveLoadHandler.Instance.data.useLegacyMoveResizeCalls, UseUnderline = false};
+        var check1 = new CheckButton(stringTable.GetEntry("LSS_XMOVE").GetLocalizedString()) {Active = SaveLoadHandler.Instance.data.useLegacyMoveResizeCalls, UseUnderline = false};
         //check1.MarginTop = 40;
         ((Label)check1.Child).Xalign = 0.0f;
         ((Label)check1.Child).Yalign = 0.5f;
         cardBox.PackStart(check1, false, false, 0);
 
-        var desc1 = CreateDescriptionLabel("Both XMoveWindow and XResizeWindow bypass WM and updates the window’s origin directly, which can leave window decorations out of sync. _NET_MOVERESIZE_WINDOW protocol sends a message to ask WM to move and resize MateEngine window as a complete, decorated unit on every modern Linux desktop while respecting the user’s compositor animations and tiling rules.\n\nOnly use XMoveWindow in case that you cannot drag and move your avatar or toggle window size at all.");
+        var desc1 = CreateDescriptionLabel(stringTable.GetEntry("LSS_XMOVE_TIP").GetLocalizedString());
         cardBox.PackStart(desc1, false, false, 0);
         
-        var check2 = new CheckButton("Enable Periodic Memory Optimization") {Active = SaveLoadHandler.Instance.data.enableAutoMemoryTrim, UseUnderline = false};
+        var check2 = new CheckButton(stringTable.GetEntry("LSS_PMO").GetLocalizedString()) {Active = SaveLoadHandler.Instance.data.enableAutoMemoryTrim, UseUnderline = false};
         ((Label)check2.Child).Xalign = 0.0f;
         ((Label)check2.Child).Yalign = 0.5f;
         cardBox.PackStart(check2, false, false, 0);
 
-        var desc2 = CreateDescriptionLabel("This feature reduces MateEngine's physical RAM usage by releasing inactive memory pages and returning freed heap memory to the system. It proactively frees RAM for better multitasking on low-memory devices.\n\nNote: To safely preserve modified data, some pages may be temporarily written to swap space (virtual memory on disk). This can cause a short-term increase in swap usage, but the data reloads quickly if needed. Minor hitches may occur if frequently accessed data is reloaded.\n\nRecommended for systems with 16GB RAM or less. Require at least 1 GiB swap space.");
+        var desc2 = CreateDescriptionLabel(stringTable.GetEntry("LSS_PMO_TIP").GetLocalizedString());
         cardBox.PackStart(desc2, false, false, 0);
 
         var hbox = new Box(Orientation.Horizontal, 5);
         cardBox.PackStart(hbox, false, false, 0);
 
-        var label = new Label("Window Type");
+        var label = new Label(stringTable.GetEntry("LSS_WINTYPE").GetLocalizedString());
         label.Xalign = 0.0f;
         label.Yalign = 0.5f;
         hbox.PackStart(label, false, false, 0);
 
-        var comboBox = new ComboBox(new[] { "Normal", "Dock" }){Active = (int)SaveLoadHandler.Instance.data.windowType};
+        var comboBox = new ComboBox(new[] { stringTable.GetEntry("LSS_WINTYPE_NORMAL").GetLocalizedString(), stringTable.GetEntry("LSS_WINTYPE_DOCK").GetLocalizedString() }){Active = (int)SaveLoadHandler.Instance.data.windowType};
         hbox.PackStart(comboBox, false, false, 0);
         
-        var desc3 = CreateDescriptionLabel("In Mutter (the WM used in GNOME and Cinnamon), normal windows are constrained to on-screen positioning in API calls.\n\nChanging ME's window type to Dock will remove these constraints, but may also change how the window behaves.\n\nIf unsure, leave it normal.");
+        var desc3 = CreateDescriptionLabel(stringTable.GetEntry("LSS_WINTYPE_TIP").GetLocalizedString());
         cardBox.PackStart(desc3, false, false, 0);
         
         var buttonBox = new Box(Orientation.Horizontal, 20) { Halign = Align.End };
         contentBox.PackEnd(buttonBox, false, false, 0);
 
-        var backBtn = new Button("Cancel");
-        var continueBtn = new Button("Save");
+        var backBtn = new Button(stringTable.GetEntry("CANCEL").GetLocalizedString());
+        var continueBtn = new Button(stringTable.GetEntry("SAVE").GetLocalizedString());
         continueBtn.StyleContext.AddClass("suggested-action");
 
         backBtn.Clicked += (_, _) =>
@@ -228,7 +233,7 @@ public class LinuxSpecificSettings : MonoBehaviour
             windowRect.center = new Vector2(Screen.width / 2f, Screen.height / 2f);
         }
 
-        windowRect = GUILayout.Window(GetHashCode(), windowRect, DrawWindow, "Linux-Specific Settings");
+        windowRect = GUILayout.Window(GetHashCode(), windowRect, DrawWindow, stringTable.GetEntry("LINUX_SPECIFIC").GetLocalizedString());
         
         // Optional: Clamp to screen edges to prevent dragging completely off-screen
         windowRect.x = Mathf.Clamp(windowRect.x, 0, Screen.width - windowRect.width);
@@ -251,30 +256,30 @@ public class LinuxSpecificSettings : MonoBehaviour
         
         GUILayout.BeginVertical(GUILayout.ExpandWidth(true));
         
-        GUILayout.Label("These options are only provided for Linux, and they could act differently on different distros.");
+        GUILayout.Label(stringTable.GetEntry("LINUX_SPECIFIC_TIP").GetLocalizedString());
 
         scrollPos = GUILayout.BeginScrollView(scrollPos, GUILayout.Height(250f));
         
         GUILayout.Space(20f);
         
-        useLegacyMoveResizeCalls = GUILayout.Toggle(useLegacyMoveResizeCalls, "Use XMoveWindow and XResizeWindow instead of _NET_MOVERESIZE_WINDOW");
-        GUILayout.Label("Both XMoveWindow and XResizeWindow bypass WM and updates the window’s origin directly, which can leave window decorations out of sync. _NET_MOVERESIZE_WINDOW protocol sends a message to ask WM to move and resize MateEngine window as a complete, decorated unit on every modern Linux desktop while respecting the user’s compositor animations and tiling rules.\n\nOnly use XMoveWindow in case that you cannot drag and move your avatar or toggle window size at all.");
+        useLegacyMoveResizeCalls = GUILayout.Toggle(useLegacyMoveResizeCalls, stringTable.GetEntry("LSS_XMOVE").GetLocalizedString());
+        GUILayout.Label(stringTable.GetEntry("LSS_XMOVE_TIP").GetLocalizedString());
 
         GUILayout.Space(10f);
         
-        enableAutoMemoryTrim = GUILayout.Toggle(enableAutoMemoryTrim, "Enable Periodic Memory Optimization");
+        enableAutoMemoryTrim = GUILayout.Toggle(enableAutoMemoryTrim, stringTable.GetEntry("LSS_PMO").GetLocalizedString());
 
-        GUILayout.Label("This feature reduces the game's physical RAM usage by releasing inactive memory pages and returning freed heap memory to the system. It proactively frees RAM for better multitasking on low-memory devices.\n\nNote: To safely preserve modified data, some pages may be temporarily written to swap space (virtual memory on disk). This can cause a short-term increase in swap usage, but the data reloads quickly if needed. Minor hitches may occur if frequently accessed data is reloaded.\n\nRecommended for systems with 16GB RAM or less.");
+        GUILayout.Label(stringTable.GetEntry("LSS_PMO_TIP").GetLocalizedString());
 
         GUILayout.Space(10f);
         
         GUILayout.BeginHorizontal();
-        GUILayout.Label("Window Type", GUILayout.Width(100));
+        GUILayout.Label(stringTable.GetEntry("LSS_WINTYPE").GetLocalizedString(), GUILayout.Width(100));
         
-        windowType = (WindowType)GUILayout.SelectionGrid((int)windowType, new [] { "Normal", "Dock" }, 2);
+        windowType = (WindowType)GUILayout.SelectionGrid((int)windowType, new [] { stringTable.GetEntry("LSS_WINTYPE_NORMAL").GetLocalizedString(), stringTable.GetEntry("LSS_WINTYPE_DOCK").GetLocalizedString() }, 2);
         GUILayout.EndHorizontal();
 
-        GUILayout.Label("In Mutter (the WM used in GNOME and Cinnamon), normal windows are constrained to on-screen positioning in API calls.\n\nChanging ME's window type to Dock will remove these constraints, but may also change how the window behaves.\n\nIf unsure, leave it normal.", 
+        GUILayout.Label(stringTable.GetEntry("LSS_WINTYPE_TIP").GetLocalizedString(), 
             GUI.skin.GetStyle("label"), GUILayout.ExpandHeight(false));
         
         GUILayout.EndScrollView();
@@ -282,11 +287,11 @@ public class LinuxSpecificSettings : MonoBehaviour
         GUILayout.FlexibleSpace();
         
         GUILayout.BeginHorizontal(GUILayout.ExpandWidth(false));
-        if (GUILayout.Button("Cancel"))
+        if (GUILayout.Button(stringTable.GetEntry("CANCEL").GetLocalizedString()))
         {
             ShowWindow(false);
         }
-        if (GUILayout.Button("OK"))
+        if (GUILayout.Button(stringTable.GetEntry("SAVE").GetLocalizedString()))
         {
             SaveLoadHandler.Instance.data.useLegacyMoveResizeCalls = useLegacyMoveResizeCalls;
             SaveLoadHandler.Instance.data.enableAutoMemoryTrim = enableAutoMemoryTrim;

@@ -1,7 +1,9 @@
 ﻿using UnityEngine;
 using UnityEngine.UI;
 using System;
+using Gtk;
 using LLMUnity;
+using Image = UnityEngine.UI.Image;
 
 namespace LLMUnitySamples
 {
@@ -153,7 +155,8 @@ namespace LLMUnitySamples
 
         public void SetText(string text)
         {
-            bubbleObject.GetComponent<Text>().text = text;
+            //bubbleObject.GetComponent<Text>().text = text;
+            Debug.Log(text);
         }
 
         public void Destroy()
