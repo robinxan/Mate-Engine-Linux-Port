@@ -39,7 +39,7 @@ namespace LLMUnitySamples
 
     class Bubble
     {
-        protected GameObject bubbleObject;
+        public GameObject bubbleObject;
         protected GameObject imageObject;
         public BubbleUI bubbleUI;
 
@@ -155,8 +155,7 @@ namespace LLMUnitySamples
 
         public void SetText(string text)
         {
-            //bubbleObject.GetComponent<Text>().text = text;
-            Debug.Log(text);
+            bubbleObject.GetComponent<Text>().text = text;
         }
 
         public void Destroy()

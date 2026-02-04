@@ -1366,8 +1366,9 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 107786320805486592
-    m_Localized: These options are only provided for Linux, and they could act differently
-      on varied distros.
+    m_Localized: Linux-specific settings are provided here due to the variety of
+      Linux configurations. You may change them to try fixing something that is not
+      working correctly.
     m_Metadata:
       m_Items: []
   - m_Id: 107786555707482112

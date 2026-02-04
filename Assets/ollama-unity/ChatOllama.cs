@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -6,10 +7,10 @@ using UnityEngine.UI;
 using System.Collections;
 using System.IO;
 using System.Linq;
-using LLMUnity;
 using LLMUnitySamples;
+using NotImplementedException = LLMUnity.NotImplementedException;
 
-    public class ChatOllama : MonoBehaviour
+public class ChatOllama : MonoBehaviour
     {
         [Header("Containers")]
         public Transform chatContainer;         
@@ -124,6 +125,8 @@ using LLMUnitySamples;
             FindAvatarSmart();
             Ollama.Launch();
             WarmUpCallback();
+            Ollama.AIName = "Zome";
+            Ollama.playerName = "user";
         }
 
         void FindAvatarSmart()
@@ -234,17 +237,19 @@ using LLMUnitySamples;
 
         void ShowLoadedMessages()
         {
-            int start = 1;
+            int start = 0;
             int total = Ollama.LoadChatHistory();
             if (maxMessages > 0)
-                start = Mathf.Max(1, total - maxMessages);
+                start = Mathf.Max(0, total - maxMessages);
 
             for (int i = start; i < total; i++)
             {
-                AddBubble(Ollama.ChatHistory[i].content, i % 2 == 1);
+                AddBubble(Ollama.ChatHistory[i].content, i % 2 == 0);
             }
             StartCoroutine(ScrollToBottomNextFrame());
         }
+
+        private string output;
 
         void onInputFieldSubmit(string newText)
         {
@@ -260,10 +265,8 @@ using LLMUnitySamples;
 
             AddBubble(message, true);
             Bubble aiBubble = AddBubble("...", false);
-
-            if (streamAudioSource != null)
-                streamAudioSource.Play();
-            if (avatarAnimator != null) avatarAnimator.SetBool(isTalkingHash, true);
+            aiBubbleText = aiBubble.bubbleObject.gameObject.GetComponent<Text>();
+            
             Ollama.OnStreamFinished += () =>
             {
                 if (avatarAnimator != null) avatarAnimator.SetBool(isTalkingHash, false);
@@ -275,10 +278,12 @@ using LLMUnitySamples;
                     StartCoroutine(FadeOutStreamAudio());
 
                 AllowInput();
+                
+                Ollama.SaveChatHistory();
             };
-
+            
             Ollama.SetSystemPrompt(File.ReadAllText(Path.Combine(Application.persistentDataPath, "ZomeAI_prompt.txt")));
-            Task chatTask = Ollama.ChatStream((partial) => { aiBubble.SetText(partial); layoutDirty = true; }, SaveLoadHandler.Instance.data.ollamaModel, message);
+            Ollama.ChatStream((partial) => { output = partial; layoutDirty = true; }, SaveLoadHandler.Instance.data.ollamaModel, message);
             inputBubble.SetText("");
         }
 
@@ -356,6 +361,8 @@ using LLMUnitySamples;
             contentRect.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, y + bottomPadding);
         }
 
+        private Text aiBubbleText;
+
         void Update()
         {
             RefreshAvatarIfChanged();
@@ -375,6 +382,18 @@ using LLMUnitySamples;
                 chatBubbles.RemoveRange(0, lastBubbleOutsideFOV + 1);
                 lastBubbleOutsideFOV = -1;
                 UpdateBubblePositions();
+            }
+
+            if (aiBubbleText && !string.IsNullOrEmpty(output))
+            {
+                if (aiBubbleText.text == "...") aiBubbleText.text = "";
+                aiBubbleText.text += output;
+                Canvas.ForceUpdateCanvases();
+                output = string.Empty;
+                
+                if (streamAudioSource != null)
+                    streamAudioSource.Play();
+                if (avatarAnimator != null) avatarAnimator.SetBool(isTalkingHash, true);
             }
         }
 

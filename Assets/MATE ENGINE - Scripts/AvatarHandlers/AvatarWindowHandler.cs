@@ -803,7 +803,7 @@ public class AvatarWindowHandler : MonoBehaviour
         for (int i = 0; i < otherQuadGOs.Count; i++)
         {
             bool on = i < activeCount;
-            if (otherQuadGOs[i].activeSelf != on) otherQuadGOs[i].SetActive(on);
+            if (otherQuadGOs[i] && otherQuadGOs[i].activeSelf != on) otherQuadGOs[i].SetActive(on);
         }
     }
     void CleanupOccluderArtifacts()

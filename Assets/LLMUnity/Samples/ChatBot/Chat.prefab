@@ -678,17 +678,36 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   chatContainer: {fileID: 6488922965967421576}
+  inputContainer: {fileID: 0}
   playerColor: {r: 0.31764707, g: 0.6431373, b: 0.31764707, a: 1}
   aiColor: {r: 0.11372549, g: 0.11372549, b: 0.28627452, a: 1}
   fontColor: {r: 1, g: 1, b: 1, a: 1}
   font: {fileID: 10102, guid: 0000000000000000e000000000000000, type: 0}
   fontSize: 16
   bubbleWidth: 600
-  llmCharacter: {fileID: 8823224466279846178}
   textPadding: 10
   bubbleSpacing: 10
-  sprite: {fileID: 10907, guid: 0000000000000000f000000000000000, type: 0}
-  stopButton: {fileID: 8421258476799283371}
+  bottomPadding: 10
+  sprite: {fileID: 0}
+  roundedSprite16: {fileID: 0}
+  roundedSprite32: {fileID: 0}
+  roundedSprite64: {fileID: 0}
+  llmCharacter: {fileID: 8823224466279846178}
+  inputPlaceholder: Message me
+  streamAudioSource: {fileID: 0}
+  playerMaterial: {fileID: 0}
+  aiMaterial: {fileID: 0}
+  playerTextMaterial: {fileID: 0}
+  aiTextMaterial: {fileID: 0}
+  scrollRect: {fileID: 0}
+  autoScrollOnNewMessage: 1
+  respectUserScroll: 1
+  maxMessages: 100
+  trimOnlyWhenAtBottom: 1
+  enableOffscreenTrim: 0
+  playerFontColor: {r: 1, g: 1, b: 1, a: 1}
+  aiFontColor: {r: 1, g: 1, b: 1, a: 1}
+  cornerRadius: 16
 --- !u!1 &6678501905367372668
 GameObject:
   m_ObjectHideFlags: 0
@@ -821,6 +840,7 @@ MonoBehaviour:
   numPredict: -1
   slot: -1
   grammar: 
+  grammarJSON: 
   cachePrompt: 1
   seed: 0
   temperature: 1
@@ -866,6 +886,7 @@ MonoBehaviour:
   setNKeepToPrompt: 1
   chat: []
   grammarString: 
+  grammarJSONString: 
 --- !u!1 &8377436931807093423
 GameObject:
   m_ObjectHideFlags: 0

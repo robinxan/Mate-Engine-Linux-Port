@@ -4,8 +4,10 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
+using Gtk;
 using LLMUnity;
 using UnityEngine;
+using Application = UnityEngine.Application;
 
 namespace ollama
 {
@@ -13,6 +15,10 @@ namespace ollama
     {
         public static List<ChatMessage> ChatHistory;
         private static int HistoryLimit;
+        
+        public static string playerName = "user";
+        
+        public static string AIName = "assistant";
 
         /// <summary>Start a brand new chat</summary>
         /// <param name="historyLimit">Number of messages to keep in memory <i>(includes both prompt and response, but <b>not</b> system)</i></param>
@@ -35,13 +41,10 @@ namespace ollama
         public static void SaveChatHistory(string fileName = null)
         {
             if (string.IsNullOrEmpty(fileName))
-                fileName = Path.Combine(Application.persistentDataPath, "chat.dat");
+                fileName = Path.Combine(Application.persistentDataPath, "ZomeAI.json");
 
-            var data = JsonConvert.SerializeObject(ChatHistory);
-
-            using (var stream = File.Open(fileName, FileMode.Create))
-            using (var writer = new BinaryWriter(stream, Encoding.UTF8, false))
-                writer.Write(IO.Encrypt(data));
+            string json = JsonUtility.ToJson(new ChatListWrapper { chat = ChatHistory.GetRange(1, ChatHistory.Count - 1) });
+            File.WriteAllText(fileName, json);
 
             Debug.Log($"Saved Chat History to \"{fileName}\"");
         }
@@ -49,7 +52,7 @@ namespace ollama
         /// <summary>Load a Chat History</summary>
         /// <param name="fileName">If not provided, defaults to <see href="https://docs.unity3d.com/ScriptReference/Application-persistentDataPath.html">Application.persistentDataPath</see></param>
         /// <param name="historyLimit">Number of messages to keep in memory <i>(includes both prompt and response, but <b>not</b> system)</i></param>
-        public static int LoadChatHistory(string fileName = null, int historyLimit = 8192)
+        public static int LoadChatHistory(string fileName = null, int historyLimit = 100)
         {
             if (string.IsNullOrEmpty(fileName))
                 fileName = Path.Combine(Application.persistentDataPath, "ZomeAI.json");
@@ -87,7 +90,7 @@ namespace ollama
         /// <returns>response string from the LLM</returns>
         public static async Task<string> Chat(string model, string prompt, int keep_alive = 300, Texture2D image = null)
         {
-            ChatHistory.Add(new ChatMessage{ role = "user", content = prompt });
+            ChatHistory.Add(new ChatMessage{ role = playerName, content = prompt });
 
             var request = new Request.Chat(model, ChatHistory, false, keep_alive, null);
             string payload = JsonConvert.SerializeObject(request);
@@ -116,7 +119,7 @@ namespace ollama
         public static async Task ChatStream(Action<string> onTextReceived, string model, string prompt,
             int keep_alive = 300, Texture2D image = null)
         {
-            ChatHistory.Add(new ChatMessage { role = "user", content = prompt });
+            ChatHistory.Add(new ChatMessage { role = playerName, content = prompt });
 
             var request = new Request.Chat(model, ChatHistory, true, keep_alive, null);
             string payload = JsonConvert.SerializeObject(request);
@@ -131,7 +134,7 @@ namespace ollama
                 }
             });
 
-            ChatHistory.Add(new ChatMessage { role = "assistant", content = reply.ToString()});
+            ChatHistory.Add(new ChatMessage { role = AIName, content = reply.ToString()});
 
         bool system = HasSystemPrompt();
 
