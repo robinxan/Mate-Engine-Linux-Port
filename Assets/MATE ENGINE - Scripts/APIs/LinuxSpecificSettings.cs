@@ -48,8 +48,6 @@ public class LinuxSpecificSettings : MonoBehaviour
         {
             ShowWindow(false);
         };
-        
-        SetupGtkWindow(window);
     }
 
     public void ShowWindow(bool show = true)
@@ -67,6 +65,7 @@ public class LinuxSpecificSettings : MonoBehaviour
         if (show)
         {
             WindowManager.Instance.SetTopmost(false);
+            SetupGtkWindow(window);
             window.ShowAll();
             Application.Run();
             return;

@@ -21,6 +21,11 @@ Tested on Ubuntu 24.04 LTS.
 ### Usage
 Simply grab a prebuilt one in [Releases](https://github.com/Marksonthegamer/Mate-Engine-Linux-Port/releases/) page. Then, run the `launch.sh` script in the output directory (This script is necessary for window transparency. For KDE, you also need to **disable "Allow applications to block compositing"** in `systemsettings`).
 
+Arch Linux users may install from AUR (by @heddxh)
+```bash
+sudo yay -S mateengine
+```
+
 ### Requirements
 - A common GNU/Linux distro
 - A common X11 desktop environment which supports compositing (such as KDE, Xfce, GNOME, etc.)
@@ -53,7 +58,7 @@ Note that if you use GNOME, you will need [AppIndicator and KStatusNotifierItem 
 - Transparent background with cutoff
 - Set window always on top
 - Dancing (experimental, require `pulseaudio` or `pipewire-pulse` for audio program detection)
-- AI Chat (require `llama-3.2-3b-instruct-q4_k_m.gguf`, case-sensitive, **must be placed under where ME executable is**)
+- AI Chat (require `Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf`, case-sensitive)
 - Mouse tracking (hand holding and eyes tracking)
 - Discord RPC
 - Custom VRM importing
@@ -97,6 +102,11 @@ This project lacks further testing and updates. Feel free to make PRs to contrib
 ### 用法
 在[Releases](https://github.com/Marksonthegamer/Mate-Engine-Linux-Port/releases/)页面获取预构建版本。必须运行输出目录中的`launch.sh`，否则 MateEngne 将缺少透明窗口背景（对于 KDE Plasma 桌面环境，你还需要在 KDE 系统设置中禁用“允许应用程序阻止显示特效合成”）。
 
+Arch Linux 用户可以直接从 AUR 安装（由 @heddxh 支持）
+```bash
+sudo yay -S mateengine
+```
+
 ### 系统要求
 - 一个常见的 GNU/Linux 发行版
 - 一个常见的 X11 桌面环境，支持显示特效合成（compositing） ，比如KDE，Xfce，GNOME等
@@ -130,7 +140,7 @@ sudo pacman -S libpulse gtk3 glib2 libx11 libxext libxrender libxdamage libayata
 - 带 Cutoff 的透明背景
 - 窗口置顶
 - 跳舞（实验性，需要PulseAudio或Pipewire-Pulse用于音频程序检测）
-- AI聊天（需要`llama-3.2-3b-instruct-q4_k_m.gguf`，文件名区分大小写，必须放在可执行文件目录）
+- AI聊天（需要`Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf`，文件名区分大小写）
 - 鼠标跟踪（手持和眼睛跟踪）
 - Discord RPC
 - 自定义 VRM 模型导入
