@@ -283,7 +283,7 @@ public class ChatOllama : MonoBehaviour
             };
             
             Ollama.SetSystemPrompt(File.ReadAllText(Path.Combine(Application.persistentDataPath, "ZomeAI_prompt.txt")));
-            Ollama.ChatStream((partial) => { output = partial; layoutDirty = true; }, SaveLoadHandler.Instance.data.ollamaModel, message);
+            _ = Ollama.ChatStream((partial) => { output = partial; layoutDirty = true; }, SaveLoadHandler.Instance.data.ollamaModel, message);
             inputBubble.SetText("");
         }
 

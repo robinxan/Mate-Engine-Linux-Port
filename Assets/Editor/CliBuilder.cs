@@ -17,7 +17,7 @@ public static class CliBuilder
                 if (outputDir == string.Empty)
                 {
                     LogError("Please specify a valid output directory.");
-                    Application.Quit(1);
+                    EditorApplication.Exit(1);
                     return;
                 }
                 break;

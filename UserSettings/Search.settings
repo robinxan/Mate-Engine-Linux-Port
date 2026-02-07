@@ -85,6 +85,7 @@ providers = {
 objectSelectors = {
 }
 recentSearches = [
+	"project"
 	"font ass"
 	"prefer"
 	"custom pa"
@@ -104,7 +105,6 @@ recentSearches = [
 	"st: steam_i"
 	"st: MC_LO"
 	"st: MC_IN"
-	"st: mc_inf"
 ]
 searchItemFavorites = [
 ]

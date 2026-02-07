@@ -5,6 +5,7 @@ using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
+using UnityEngine.Networking;
 
 namespace ollama
 {
@@ -120,40 +121,30 @@ namespace ollama
 
         private static async Task<T> GetRequest<T>(string endpoint) where T : Response.Base
         {
-            HttpWebRequest httpWebRequest;
-
-            try
+            using (UnityWebRequest webRequest = UnityWebRequest.Get($"{SERVER}{endpoint}"))
             {
-                httpWebRequest = (HttpWebRequest)WebRequest.Create($"{SERVER}{endpoint}");
-                httpWebRequest.ContentType = "application/json";
-                httpWebRequest.Method = "GET";
+                // To use await with UnityWebRequest, we yield until it's done
+                var operation = webRequest.SendWebRequest();
 
-                string result;
+                while (!operation.isDone)
+                    await Task.Yield();
 
-                using (var httpResponse = await httpWebRequest.GetResponseAsync().ConfigureAwait(false))
-                using (var streamReader = new StreamReader(httpResponse.GetResponseStream()))
-                    result = await streamReader.ReadToEndAsync().ConfigureAwait(false);
-
-                return JsonConvert.DeserializeObject<T>(result);
-            }
-            catch (WebException webEx)
-            {
-                string errorResponse = "";
-
-                if (webEx.Response != null)
+                if (webRequest.result != UnityWebRequest.Result.Success)
                 {
-                    using (var errorStream = webEx.Response.GetResponseStream())
-                    using (var reader = new StreamReader(errorStream))
-                        errorResponse = await reader.ReadToEndAsync().ConfigureAwait(false);
+                    Debug.LogError($"Error during \"{endpoint}\" GetRequest: {webRequest.error}");
+                    return default; // Still returns null, but with a clear error
                 }
 
-                Debug.LogError($"HTTP Error during \"{endpoint}\" PostRequest:\n{webEx.Message}\n{errorResponse}\n{webEx.StackTrace}");
-                return default;
-            }
-            catch (Exception e)
-            {
-                Debug.LogError($"Error during \"{endpoint}\" GetRequest:\n{e.Message}\n{e.StackTrace}");
-                return default;
+                try
+                {
+                    string result = webRequest.downloadHandler.text;
+                    return JsonConvert.DeserializeObject<T>(result);
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError($"JSON Parsing Error in GetRequest: {e.Message}");
+                    return default;
+                }
             }
         }
     }

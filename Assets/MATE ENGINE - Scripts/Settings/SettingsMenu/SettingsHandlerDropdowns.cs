@@ -2,11 +2,13 @@ using UnityEngine;
 using TMPro;
 using UnityEngine.UI;
 using System.Collections.Generic;
+using ollama;
 
 public class SettingsHandlerDropdowns : MonoBehaviour
 {
     public TMP_Dropdown graphicsDropdown;
     public TMP_Dropdown contextLengthDropdown;
+    public TMP_Dropdown ollamaModelDropdown;
 
     [System.Serializable]
     public class ParticleThemeEntry
@@ -22,8 +24,9 @@ public class SettingsHandlerDropdowns : MonoBehaviour
     public LLMUnity.LLM llm;
 
     private readonly int[] contextOptions = { 2048, 4096, 8192, 16384, 32768 };
+    private readonly List<string> ollamaModelOptions = new();
 
-    void Start()
+    async void Start()
     {
         if (graphicsDropdown != null)
         {
@@ -39,6 +42,24 @@ public class SettingsHandlerDropdowns : MonoBehaviour
             foreach (int c in contextOptions) labels.Add($"{c / 1024}K");
             contextLengthDropdown.AddOptions(labels);
             contextLengthDropdown.onValueChanged.AddListener(OnContextChanged);
+        }
+
+        if (ollamaModelDropdown != null)
+        {
+            ollamaModelDropdown.ClearOptions();
+            var models = await Ollama.List();
+            if (models.Length == 0)
+            {
+                Debug.LogWarning("No Ollama models found.");
+                ollamaModelDropdown.AddOptions(new List<string> { "N/A" });
+                return;
+            }
+            foreach (var model in models)
+            {
+                ollamaModelDropdown.AddOptions(new List<string> { model.name + ":" + model.details.parameter_size });
+                ollamaModelOptions.Add(model.name + ":" + model.details.parameter_size);
+            }
+            ollamaModelDropdown.onValueChanged.AddListener(OnOllamaModelChanged);
         }
 
         if (particleDropdown != null)
@@ -93,6 +114,12 @@ public class SettingsHandlerDropdowns : MonoBehaviour
     {
         if (llm != null) llm.contextSize = contextOptions[index];
         SaveLoadHandler.Instance.data.contextLength = contextOptions[index];
+        SaveLoadHandler.Instance.SaveToDisk();
+    }
+    
+    void OnOllamaModelChanged(int index)
+    {
+        SaveLoadHandler.Instance.data.ollamaModel = ollamaModelOptions[index];
         SaveLoadHandler.Instance.SaveToDisk();
     }
 
