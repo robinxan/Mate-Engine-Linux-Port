@@ -35,6 +35,7 @@ public class SystemTrayEditor : Editor
             var handlerObject = element.FindPropertyRelative("handlerObject");
             var toggleField = element.FindPropertyRelative("toggleField");
             var methodName = element.FindPropertyRelative("methodName");
+            var className = element.FindPropertyRelative("className");
 
             float y = rect.y + 2;
             float h = EditorGUIUtility.singleLineHeight;
@@ -89,11 +90,12 @@ public class SystemTrayEditor : Editor
                     else if (actionType == SystemTray.TrayActionType.Method)
                     {
                         var display = new List<string>();
+                        var classes = new List<string>();
                         var values = new List<string>();
                         var comps = go.GetComponents<MonoBehaviour>();
                         foreach (var c in comps)
                         {
-                            if (c == null) continue;
+                            if (!c) continue;
                             var t = c.GetType();
                             foreach (var m in t.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
                             {
@@ -101,13 +103,18 @@ public class SystemTrayEditor : Editor
                                 {
                                     display.Add(t.Name + "." + m.Name);
                                     values.Add(m.Name);
+                                    classes.Add(t.Name);
                                 }
                             }
                         }
                         int currentIdx = values.IndexOf(methodName.stringValue);
                         int shownIdx = Mathf.Clamp(currentIdx < 0 ? 0 : currentIdx, 0, Math.Max(values.Count - 1, 0));
                         int newIdx = EditorGUI.Popup(new Rect(rect.x, y, rect.width, h), "Method", shownIdx, display.ToArray());
-                        if (values.Count > 0 && newIdx != currentIdx) methodName.stringValue = values[newIdx];
+                        if (values.Count > 0 && newIdx != currentIdx)
+                        {
+                            methodName.stringValue = values[newIdx];
+                            className.stringValue = classes[newIdx];
+                        }
                     }
                 }
             }
@@ -117,8 +124,6 @@ public class SystemTrayEditor : Editor
     public override void OnInspectorGUI()
     {
         serializedObject.Update();
-        EditorGUILayout.PropertyField(serializedObject.FindProperty("icon"));
-        EditorGUILayout.PropertyField(serializedObject.FindProperty("iconName"));
         list.DoLayoutList();
         serializedObject.ApplyModifiedProperties();
     }

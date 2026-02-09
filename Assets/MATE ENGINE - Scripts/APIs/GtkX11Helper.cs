@@ -1,6 +1,10 @@
 using System;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Gdk;
+using GLib;
+using Debug = UnityEngine.Debug;
+using Display = Gdk.Display;
 
 
 public class GtkX11Helper
@@ -21,9 +25,16 @@ public class GtkX11Helper
 
     public static void Init(IntPtr window)
     {
+        ExceptionManager.UnhandledException += args =>
+        {
+            Debug.LogError("Exception in Gtk# callback delegate.");
+            Debug.LogError((UnhandledExceptionEventArgs)args.ExceptionObject);
+            Debug.LogError(new StackTrace(true));
+            UnityEngine.Application.Quit(1);
+        };
         if (Instance != null)
         {
-            UnityEngine.Debug.LogError("Trying to create multiple Gtk instances.");
+            Debug.LogError("Trying to create multiple Gtk instances.");
             return;
         }
         Instance = new GtkX11Helper
@@ -38,7 +49,7 @@ public class GtkX11Helper
         Instance.DummyParent.Window.Reparent(Instance.gdkWindow, 0, 0);
     }
 
-    public static Window ForeignNewForDisplay(IntPtr x11WindowXid)
+    private static Window ForeignNewForDisplay(IntPtr x11WindowXid)
     {
         var display = Display.Default;
         IntPtr gdkDisplayPtr = display.Handle;
@@ -46,7 +57,7 @@ public class GtkX11Helper
         IntPtr foreign = gdk_x11_window_foreign_new_for_display(gdkDisplayPtr, x11WindowXid);
         if (foreign == IntPtr.Zero)
             throw new Exception("Failed to create foreign GdkWindow");
-        
-        return (Window)GLib.Object.GetObject(foreign, false);
+
+        return new Window(foreign);
     }
 }

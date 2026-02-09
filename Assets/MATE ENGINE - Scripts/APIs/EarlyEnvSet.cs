@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Gtk;
+using NativeLibraryLoader;
 using Unity.Collections;
 using UnityEngine;
 using Debug = UnityEngine.Debug;
@@ -54,6 +55,22 @@ public static class EarlyEnvSet
         return;
         #endif
         setenv("NO_AT_BRIDGE", "1", 0);
+        string[] candidates = {"libX11.so.6", "libXext.so.6", "libXrender.so.1", "libXdamage.so.1", "libXrandr.so.2", "libXcursor.so.1", "libpulse.so.0", "libgdk-3.so.0", "libgtk-3.so.0", "libayatana-appindicator3.so.1"};
+        List<string> missing = new();
+        foreach (var name in candidates)
+        {
+            var libLoader = LibraryLoader.GetPlatformDefaultLoader();
+            try
+            {
+                var ptr = libLoader.LoadNativeLibrary(name);
+                libLoader.FreeNativeLibrary(ptr);
+            }
+            catch
+            {
+                Debug.LogError($"Cannot load library {name}. Consider checking if its installed correctly.");
+                missing.Add(name);
+            }
+        }
         string[] argc = { };
         if (!Gtk.Application.InitCheck(string.Empty, ref argc))
         {
@@ -64,12 +81,10 @@ public static class EarlyEnvSet
         {
             throw new Exception("Cannot open X11 display");
         }
-        if (!CheckVisual(display, out var window))
+        if (!CheckEnvAndVisual(display, missing))
         {
             return;
         }
-
-        GtkX11Helper.Init(window);
         if (!IsCompositionSupported(display))
         {
             var dialog = new MessageDialog(GtkX11Helper.Instance.DummyParent, DialogFlags.DestroyWithParent, MessageType.Warning, ButtonsType.Ok, false, "Composition is unavailable for this window manager.");
@@ -101,7 +116,7 @@ public static class EarlyEnvSet
         return false;
     }
 
-    static bool CheckVisual(IntPtr display, out IntPtr window)
+    static bool CheckEnvAndVisual(IntPtr display, List<string> missingLibs)
     {
         int pid = Process.GetCurrentProcess().Id;
         List<IntPtr> windows = FindWindowsByPid(display, pid);
@@ -112,10 +127,37 @@ public static class EarlyEnvSet
         {
             unityWindow = windows[0]; // Typically the first is the main window
         }
-        window = unityWindow;
+        GtkX11Helper.Init(unityWindow);
         if (XGetWindowAttributes(display, unityWindow, out WindowManager.XWindowAttributes attrs) == 0)
         {
             Debug.LogError("Failed to get window attributes");
+            return false;
+        }
+
+        if (missingLibs.Count > 0)
+        {
+            var dialog = new MessageDialog(GtkX11Helper.Instance.DummyParent, DialogFlags.DestroyWithParent, MessageType.Warning, ButtonsType.Ok, false, "Some required native libraries could not be loaded.");
+            dialog.SecondaryText = "This app relies on these dependencies to run.";
+            dialog.MessageType = MessageType.Warning;
+            var textView = new TextView();
+            textView.Editable = false;
+            textView.CursorVisible = false;
+            textView.AcceptsTab = false;
+            textView.WrapMode = Gtk.WrapMode.Word;
+            
+            var buffer = textView.Buffer;
+        
+            buffer.Text = missingLibs.Count == 0 ? "How do you get here?" : string.Join("\n", missingLibs);
+            
+            dialog.ContentArea.PackStart(textView, true, true, 12);
+            
+            dialog.Response += (_, _) =>
+            {
+                dialog.Hide();
+                Gtk.Application.Quit();
+            };
+            dialog.ShowAll();
+            Gtk.Application.Run();
             return false;
         }
         

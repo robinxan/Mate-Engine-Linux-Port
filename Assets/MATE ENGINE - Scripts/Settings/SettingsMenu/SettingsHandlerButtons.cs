@@ -54,7 +54,7 @@ public class SettingsHandlerButtons : MonoBehaviour
         SaveLoadHandler.Instance.SaveToDisk();
     }
 
-    private void CycleWindowSize()
+    public void CycleWindowSize()
     {
         var data = SaveLoadHandler.Instance.data;
         switch (data.windowSizeState)

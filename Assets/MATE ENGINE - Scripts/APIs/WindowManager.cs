@@ -506,8 +506,8 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
         return button switch
         {
             KeyCode.Mouse0 => (mask & 0x100) != 0,  // Button1Mask = 1 << 8  (= 0x100)
-            KeyCode.Mouse1 => (mask & 0x400) != 0,  // Button3Mask = 1 << 10 (= 0x400) → right
-            KeyCode.Mouse2 => (mask & 0x200) != 0,  // Button2Mask = 1 << 9  (= 0x200) → middle
+            KeyCode.Mouse1 => (mask & 0x400) != 0,  // Button3Mask = 1 << 10 (= 0x400) -> right
+            KeyCode.Mouse2 => (mask & 0x200) != 0,  // Button2Mask = 1 << 9  (= 0x200) -> middle
             _ => false
         };
     }
@@ -520,7 +520,7 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
             return false;
 
         // Check keycodes 8 to 255 (skip 0–7 which are usually unused)
-        for (int i = 1; i < 32; i++)        // bytes 1–31 → keycodes 8–255
+        for (int i = 1; i < 32; i++)        // bytes 1–31 -> keycodes 8–255
         {
             if (keymap[i] != 0)             // any bit set = key down
                 return true;

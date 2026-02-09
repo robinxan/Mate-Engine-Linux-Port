@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using UniGLTF;
+using Unity.Mathematics;
 using UnityEngine;
 
 namespace VRM.SpringBone
@@ -176,10 +177,10 @@ namespace VRM.SpringBone
                 // Collision
                 foreach (var collider in m_colliders)
                 {
-                    if (collider.TryCollide(settings, transform, nextTail, out var posFromCollider))
+                    if (collider.TryCollide(settings.HitRadius, scalingFactor, nextTail, out var posFromCollider))
                     {
                         // 長さをboneLengthに強制
-                        nextTail = transform.position + (posFromCollider - transform.position).normalized * init.Length;
+                        nextTail = transform.position + ((Vector3)posFromCollider - transform.position).normalized * init.Length;
                     }
                 }
 

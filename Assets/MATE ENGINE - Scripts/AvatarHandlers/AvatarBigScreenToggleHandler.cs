@@ -50,9 +50,9 @@ public class AvatarBigScreenToggleHandler : MonoBehaviour
             }
             else if (!isBigScreenActive)
             {
-                if (wasEnabledBefore.ContainsKey(b))
+                if (wasEnabledBefore.TryGetValue(b, out var value))
                 {
-                    b.enabled = wasEnabledBefore[b];
+                    b.enabled = value;
                 }
             }
         }

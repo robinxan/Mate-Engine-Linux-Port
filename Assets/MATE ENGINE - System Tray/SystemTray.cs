@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -13,6 +14,7 @@ public class SystemTray : MonoBehaviour
         public TrayActionType type;
         public GameObject handlerObject;
         public string toggleField;
+        public string className;
         public string methodName;
     }
     public enum TrayActionType { Toggle, Button, Method }
@@ -108,12 +110,15 @@ public class SystemTray : MonoBehaviour
     private void ButtonAction(TrayAction action)
     {
         if (action.handlerObject == null || string.IsNullOrEmpty(action.methodName)) return;
-        var mono = action.handlerObject.GetComponent<MonoBehaviour>();
-        if (mono == null) return;
-        var type = mono.GetType();
-        var method = type.GetMethod(action.methodName);
-        if (method != null)
-            method.Invoke(mono, null);
+        var monoBehaviours = action.handlerObject.GetComponents<MonoBehaviour>();
+        if (monoBehaviours == null) return;
+        foreach (var mono in monoBehaviours)
+        {
+            var type = mono.GetType();
+            if (type.Name != action.className) continue;
+            var method = type.GetMethod(action.methodName);
+            method?.Invoke(mono, null);
+        }
     }
 
     private void QuitApp()

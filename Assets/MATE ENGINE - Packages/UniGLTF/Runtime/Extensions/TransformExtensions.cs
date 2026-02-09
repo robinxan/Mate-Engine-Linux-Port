@@ -1,21 +1,23 @@
+using Unity.Burst;
+using Unity.Mathematics;
 using UnityEngine;
 
-namespace UniGLTF
+public static class TransformExtensions
 {
-    public static class TransformExtensions
+    // Original method (kept for legacy/non-job use)
+    public static float UniformedLossyScale(this Transform transform)
     {
-        public static float UniformedLossyScale(this Transform transform)
-        {
-            var s = transform.lossyScale;
-            return AbsoluteMaxValue(s);
-        }
+        var s = transform.lossyScale;
+        return AbsoluteMaxValue(s);
+    }
 
-        public static float AbsoluteMaxValue(in Vector3 s)
-        {
-            var x = Mathf.Abs(s.x);
-            var y = Mathf.Abs(s.y);
-            var z = Mathf.Abs(s.z);
-            return Mathf.Max(Mathf.Max(x, y), z);
-        }
+    // Burst-friendly version (call this inside jobs)
+    [BurstCompile]
+    public static float AbsoluteMaxValue(float3 s)
+    {
+        var x = math.abs(s.x);
+        var y = math.abs(s.y);
+        var z = math.abs(s.z);
+        return math.max(math.max(x, y), z);
     }
 }

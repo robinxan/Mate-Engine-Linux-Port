@@ -6,6 +6,7 @@ public class MateScreenshotHandler : MonoBehaviour
 {
     public Camera targetCamera;
     public int msaa = 4;
+    private bool hasTaken;
 
     public void TakeScreenshot()
     {
@@ -50,5 +51,9 @@ public class MateScreenshotHandler : MonoBehaviour
         rt.Release();
         Destroy(rt);
         Destroy(tex);
+        
+        if (hasTaken) return;
+        Application.OpenURL(Path.GetDirectoryName(path));
+        hasTaken = true;
     }
 }

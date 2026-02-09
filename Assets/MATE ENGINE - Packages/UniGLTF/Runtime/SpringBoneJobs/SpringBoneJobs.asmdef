@@ -2,7 +2,8 @@
     "name": "SpringBoneJobs",
     "rootNamespace": "",
     "references": [
-        "GUID:8d76e605759c3f64a957d63ef96ada7c"
+        "GUID:8d76e605759c3f64a957d63ef96ada7c",
+        "GUID:d8b63aba1907145bea998dd612889d6b"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

@@ -1,37 +1,46 @@
-using UniGLTF;
+using Unity.Burst;
+using Unity.Mathematics;
 using UnityEngine;
 
 namespace VRM.SpringBone
 {
-    readonly struct SphereCollider
+    public readonly struct SphereCollider
     {
-        public readonly Vector3 Position;
+        public readonly float3 Position;
         public readonly float Radius;
 
-        public SphereCollider(Transform transform, VRMSpringBoneColliderGroup.SphereCollider collider)
+        public SphereCollider(Transform colliderTransform, VRMSpringBoneColliderGroup.SphereCollider collider)
         {
-            Position = transform.TransformPoint(collider.Offset);
-            var ls = transform.lossyScale;
-            var scale = Mathf.Max(Mathf.Max(ls.x, ls.y), ls.z);
-            Radius = scale * collider.Radius;
+            Position = colliderTransform.TransformPoint(collider.Offset);
+            Radius = colliderTransform.UniformedLossyScale() * collider.Radius; // Uses abs max for robustness
         }
 
-        public bool TryCollide(SpringBoneSettings settings, Transform transform, Vector3 nextTail, out Vector3 posFromCollider)
+        [BurstCompile]
+        public bool TryCollide(float hitRadius, float boneUniformScale, float3 nextTail, out float3 posFromCollider)
         {
-            var m_radius = settings.HitRadius * transform.UniformedLossyScale();
-            var r = m_radius + Radius;
-            if (Vector3.SqrMagnitude(nextTail - Position) <= (r * r))
+            float m_radius = hitRadius * boneUniformScale;
+            float r = m_radius + Radius;
+            float r_squared = r * r;
+
+            float3 delta = nextTail - Position;
+            float sqrDist = math.dot(delta, delta);
+
+            if (sqrDist <= r_squared && sqrDist > 1e-9f) // Avoid zero-distance NaN; tweak epsilon if needed
             {
-                // ヒット。Colliderの半径方向に押し出す
-                var normal = (nextTail - Position).normalized;
-                posFromCollider = Position + normal * (m_radius + Radius);
+                float3 normal = math.normalize(delta);
+                posFromCollider = Position + normal * r;
                 return true;
             }
-            else
+
+            // Rare zero-distance case: push along arbitrary axis (e.g., up)
+            if (sqrDist <= r_squared)
             {
-                posFromCollider = default;
-                return false;
+                posFromCollider = Position + new float3(0, r, 0);
+                return true;
             }
+
+            posFromCollider = default;
+            return false;
         }
     }
 }

@@ -273,7 +273,7 @@ public class AvatarBigScreenHandler : MonoBehaviour
             float overlap = OverlapArea(windowRect, monitorRects[i]);
             if (overlap > maxArea) { idx = i; maxArea = overlap; }
         }
-        return monitorRects.Count > 0 ? monitorRects[idx] : new Rect(0, 0, Screen.currentResolution.width, Screen.currentResolution.height);
+        return new(new((monitorRects[idx].x + monitorRects[idx].width) / 2f - windowRect.width / 2, (monitorRects[idx].y + monitorRects[idx].height) / 2f - windowRect.height / 2), monitorRects[idx].size);
     }
 
     float OverlapArea(Rect a, Rect b)
