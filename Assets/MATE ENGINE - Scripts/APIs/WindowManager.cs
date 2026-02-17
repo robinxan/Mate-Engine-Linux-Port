@@ -963,9 +963,8 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
         
     private void EnableClickThroughTransparency()
     {
-        if (_running) return;
+        if (_running || !transparentInputEnabled) return;
         SetupTransparentInput();
-        transparentInputEnabled = true;
         _running = true;
         _x11EventThread = new Thread(ApplyShaping)
         {
@@ -1238,24 +1237,25 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
         Image image;
         image.Width = width;
         image.Height = height;
-        image.Data = new byte[width * height * 4];
+        int byteCount = width * height * 4;
+        image.Data = new byte[byteCount];
 
-        for (var y = 0; y < height; y++)
+        if (_useShm && _shmInfo.shmaddr != IntPtr.Zero)
         {
-            for (var x = 0; x < width; x++)
+            Marshal.Copy(_shmInfo.shmaddr, image.Data, 0, byteCount);
+        }
+        else if (xImagePtr != IntPtr.Zero)
+        {
+            XImage ximg = Marshal.PtrToStructure<XImage>(xImagePtr);
+        
+            if (ximg.data != IntPtr.Zero)
             {
-                var pixel = XGetPixel(xImagePtr, x, y);
-                var idx = (y * width + x) * 4;
-                image.Data[idx + 0] = (byte)((pixel >> 16) & 0xFF); // R
-                image.Data[idx + 1] = (byte)((pixel >> 8) & 0xFF); // G
-                image.Data[idx + 2] = (byte)(pixel & 0xFF); // B
-                image.Data[idx + 3] = (byte)((pixel >> 24) & 0xFF); // A
+                Marshal.Copy(ximg.data, image.Data, 0, byteCount);
             }
         }
 
         return image;
     }
-
     private void ApplyShaping()
     {
         try
@@ -1265,10 +1265,7 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
                 if (_display == IntPtr.Zero) break;
                 // Removed XPending here to significantly improve CPU usage
                 XEvent ev = default;
-                if (XNextEvent(_display, ref ev) != 0) continue; // Skip invalid events
-
-                // Add null-display check before processing
-                if (_display == IntPtr.Zero) break;
+                XNextEvent(_display, ref ev);
 
                 switch (ev.type)
                 {
@@ -1398,7 +1395,7 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
 
     private int _damageEventBase;
     private IntPtr _damage = IntPtr.Zero;
-    private bool _running = true;
+    private bool _running;
     private bool _closing;
     private Thread _x11EventThread;
     private Stopwatch _shapingStopwatch;
@@ -1657,6 +1654,22 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
     {
         public byte[] Data;
         public int Width, Height;
+    }
+    
+    [StructLayout(LayoutKind.Sequential)]
+    public struct XImage
+    {
+        public int width, height;
+        public int xoffset;
+        public int format;
+        public IntPtr data;
+        public int byte_order;
+        public int bitmap_unit;
+        public int bitmap_bit_order;
+        public int bitmap_pad;
+        public int depth;
+        public int bytes_per_line;
+        public int bits_per_pixel;
     }
         
     [Serializable]
