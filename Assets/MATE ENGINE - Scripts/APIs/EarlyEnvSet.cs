@@ -234,66 +234,6 @@ public static class EarlyEnvSet
         return -1;
     }
     
-    private static bool IsWindowVisible(IntPtr display, IntPtr rootWindow, IntPtr window)
-    {
-        if (display == IntPtr.Zero) return false;
-
-        int result = XGetWindowAttributes(display, window, out WindowManager.XWindowAttributes attr);
-        if (result == 0 || attr.map_state != 2) return false;
-    
-        if (!XTranslateCoordinates(display, window, rootWindow, 0, 0, out int absX, out int absY, out _))
-            return false;
-
-        float targetX1 = absX;
-        float targetY1 = absY;
-        float targetX2 = absX + attr.width;
-        float targetY2 = absY + attr.height;
-        float targetArea = (float)attr.width * attr.height;
-    
-        List<IntPtr> stacking = GetClientStackingList(display, rootWindow);
-        int index = stacking.IndexOf(window);
-        if (index < 0) return false;
-    
-        List<(float x1, float y1, float x2, float y2)> coversList = new();
-        for (int i = index + 1; i < stacking.Count; i++)
-        {
-            IntPtr ow = stacking[i];
-            XGetWindowAttributes(display, ow, out WindowManager.XWindowAttributes oattr);
-            if (oattr.map_state != 2) continue;
-
-            if (!XTranslateCoordinates(display, ow, rootWindow, 0, 0, out int oabsX, out int oabsY, out _))
-                continue;
-
-            float ox1 = oabsX;
-            float oy1 = oabsY;
-            float ox2 = oabsX + oattr.width;
-            float oy2 = oabsY + oattr.height;
-        
-            float ix1 = Math.Max(targetX1, ox1);
-            float iy1 = Math.Max(targetY1, oy1);
-            float ix2 = Math.Min(targetX2, ox2);
-            float iy2 = Math.Min(targetY2, oy2);
-            if (ix1 < ix2 && iy1 < iy2)
-            {
-                coversList.Add((ix1, iy1, ix2, iy2));
-            }
-        }
-
-        if (coversList.Count == 0) return true;
-    
-        // Burst-optimized union area computation
-        NativeArray<WindowManager.RectF> covers = new NativeArray<WindowManager.RectF>(coversList.Count, Allocator.Temp);
-        for (int i = 0; i < coversList.Count; i++)
-        {
-            var t = coversList[i];
-            covers[i] = new WindowManager.RectF { x1 = t.x1, y1 = t.y1, x2 = t.x2, y2 = t.y2 };
-        }
-        float coveredArea = WindowManager.UnionAreaCalculator.Compute(covers);
-        covers.Dispose();
-    
-        return coveredArea < targetArea - 1e-4f;
-    }
-    
     private static List<IntPtr> GetClientStackingList(IntPtr display, IntPtr rootWindow)
     {
         IntPtr atom = XInternAtom(display, "_NET_CLIENT_LIST_STACKING", false);
@@ -333,10 +273,7 @@ public static class EarlyEnvSet
                 for (ulong i = 0; i < nItems; i++)
                 {
                     IntPtr win = Marshal.ReadIntPtr(prop, (int)(i * (ulong)IntPtr.Size));
-                    if (IsWindowVisible(display, rootWindow, win))
-                    {
-                        result.Add(win);
-                    }
+                    result.Add(win);
                 }
                 XFree(prop);
                 return result;

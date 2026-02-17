@@ -120,7 +120,7 @@ public class TrayIndicator : MonoBehaviour
         CreateMenu(menuEntries);
     }
 
-    public void RefreshMenu()
+    private void RefreshMenu()
     {
         CleanupMenu();
         if (OnBuildMenu != null)
@@ -188,7 +188,6 @@ public class TrayIndicator : MonoBehaviour
             MenuActions[menuItem].Invoke();
         }
 
-        // Optional: Refresh menu after action (e.g., to update other items)
         RefreshMenu();
     }
     
