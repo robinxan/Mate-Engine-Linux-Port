@@ -1,6 +1,6 @@
 # 🌐 Language / 语言选择
 - [English](#English)
-- [中文](#中文)
+- [简体中文](#简体中文)
 
 ---
 
@@ -87,7 +87,7 @@ This project lacks further testing and updates. Feel free to make PRs to contrib
 
 ---
 
-## 中文
+## 简体中文
 
 > [!IMPORTANT]
 > 我是高二学生，学业很忙！

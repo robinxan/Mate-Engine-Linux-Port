@@ -38,7 +38,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 1, z: 0, w: 0}
   m_LocalPosition: {x: 0, y: -0.8, z: 0}
-  m_LocalScale: {x: 1.2798932, y: 1.2798932, z: 1.2798932}
+  m_LocalScale: {x: 0.800054, y: 0.800054, z: 0.800054}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -90,8 +90,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   animator: {fileID: 5500079421849817615}
-  SOUND_THRESHOLD: 0.2
-  allowedApps: []
+  SOUND_THRESHOLD: 0.1392153
+  allowedApps:
+  - vlc
+  - elisa
   totalIdleAnimations: 11
   IDLE_SWITCH_TIME: 10
   IDLE_TRANSITION_TIME: 1
@@ -466,7 +468,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0059bc9904acbc647b28a97010793b06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  useHandOffset: 0
   screenInteractionRadius: 25
   screenInteractionRadiusColor: {r: 0.2, g: 0.7, b: 1, a: 0.2}
   preZoneMargin: 25

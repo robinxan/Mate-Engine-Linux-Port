@@ -2,6 +2,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 
 public class AvatarBigScreenHandler : MonoBehaviour
 {
@@ -265,7 +266,7 @@ public class AvatarBigScreenHandler : MonoBehaviour
     {
         if (WindowManager.Instance == null) return new Rect(0, 0, Screen.currentResolution.width, Screen.currentResolution.height);
         
-        List<Rect> monitorRects = WindowManager.Instance.GetAllMonitors();
+        List<Rect> monitorRects = WindowManager.Instance.GetAllMonitors().Values.ToList();
         int idx = 0;
         float maxArea = 0;
         for (int i = 0; i < monitorRects.Count; i++)

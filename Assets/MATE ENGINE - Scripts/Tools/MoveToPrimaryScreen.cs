@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
+using System.Linq;
 
 public class MoveToPrimaryScreen : MonoBehaviour
 {
@@ -14,7 +15,7 @@ public class MoveToPrimaryScreen : MonoBehaviour
     {
         if (!WindowManager.Instance) return new Rect(0, 0, Screen.currentResolution.width, Screen.currentResolution.height);
         
-        List<Rect> monitorRects = WindowManager.Instance.GetAllMonitors();
+        List<Rect> monitorRects = WindowManager.Instance.GetAllMonitors().Values.ToList();
         return new(new((monitorRects[0].x + monitorRects[0].width) / 2f - windowRect.width / 2, (monitorRects[0].y + monitorRects[0].height) / 2f - windowRect.height / 2), monitorRects[0].size);
     }
 

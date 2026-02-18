@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
 using UnityEngine;
@@ -157,7 +158,9 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
 
     private void Init()
     {
+#if !UNITY_EDITOR
         XInitThreads();
+#endif
         // Open X11 display
         _display = XOpenDisplay(null);
         if (_display == IntPtr.Zero)
@@ -217,9 +220,29 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
     {
         _running = false;
         _closing = true;
+    
+        if (_display != IntPtr.Zero && _unityWindow != IntPtr.Zero)
+        {
+            var wakeupAtom = XInternAtom(_display, "WAKEUP_THREAD", false);
+        
+            XClientMessageEvent msg = new XClientMessageEvent
+            {
+                type = ClientMessage,
+                window = _unityWindow,
+                message_type = wakeupAtom,
+                format = 32,
+                data = new IntPtr[5]
+            };
+            XSendEvent(_display, _unityWindow, false, 0, ref msg);
+            XFlush(_display);
+        }
+
         if (_x11EventThread != null && _x11EventThread.IsAlive)
         {
-            _x11EventThread.Join(500); 
+            if (!_x11EventThread.Join(500)) 
+            {
+                _x11EventThread.Abort(); 
+            }
         }
         if (_display != IntPtr.Zero)
         {
@@ -338,11 +361,11 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
             return;
 
         if (_monitors == null) return;
-        var monitorRect = _monitors[monitorIndex];
+        var monitorRect = _monitors.ElementAt(monitorIndex);
 
         var absolutePos = new Vector2(
-            monitorRect.x + relativePos.x,
-            monitorRect.y + relativePos.y
+            monitorRect.Value.x + relativePos.x,
+            monitorRect.Value.y + relativePos.y
         );
 
         SetWindowPosition(absolutePos);
@@ -358,7 +381,7 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
     
     public void QueryMonitors()
     {
-        _monitors = new List<Rect>();
+        _monitors = new();
         _monitors.Clear();
         if (_display == IntPtr.Zero) return;
             
@@ -404,7 +427,7 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
             }
 
             var monRect = new Rect(crtcInfo.x, crtcInfo.y, crtcInfo.width, crtcInfo.height);
-            _monitors.Add(monRect);
+            _monitors.Add(crtcInfoHandle, monRect);
 
             XRRFreeCrtcInfo(crtcInfoHandle);
             XRRFreeOutputInfo(outInfoHandle);
@@ -414,8 +437,7 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
 
         if (_monitors.Count == 0)
         {
-            // Fallback to primary
-            _monitors.Add(new Rect(0, 0, XDisplayWidth(_display, 0), XDisplayHeight(_display, 0)));
+            ShowError("No monitors were found.");
         }
     }
 
@@ -445,6 +467,11 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
         }
 
         return Vector2.zero;
+    }
+    
+    public void SetWindowSize(float x, float y)
+    {
+        SetWindowSize(new Vector2(x, y));
     }
 
     public void SetWindowSize(Vector2 size)
@@ -506,6 +533,19 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
 
         return new Vector2(rootX, rootY);
     }
+    
+    public bool GetMousePosition(out Vector2 position)
+    {
+        // Query mouse position
+        int rootX = 0, rootY = 0;
+        IntPtr rootReturn = IntPtr.Zero, childReturn = IntPtr.Zero;
+        int winX = 0, winY = 0;
+        uint maskReturn = 0;
+
+        bool result = XQueryPointer(_display, _rootWindow, ref rootReturn, ref childReturn, ref rootX, ref rootY, ref winX, ref winY, ref maskReturn);
+        position = new Vector2(rootX, rootY);
+        return result;
+    }
         
     public bool GetMouseButton(KeyCode button) // 0=left, 1=right, 2=middle
     {
@@ -550,25 +590,69 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
         
     public Rect GetMonitorRectFromPoint(Vector2 point)
     {
-        foreach (var mon in _monitors)
+        foreach (var mon in _monitors.Values)
         {
             if (mon.Contains(point)) return mon;
         }
+        return Rect.zero;
+    }
 
-        return new Rect();
+    public IntPtr GetMonitorFromWindow(IntPtr window = default)
+    {
+        var monRect = GetMonitorRectFromWindow(window);
+        foreach (var kvp in _monitors.Where(kvp => kvp.Value == monRect))
+        {
+            return kvp.Key;
+        }
+        
+        throw new KeyNotFoundException($"No such monitor includes the center point of that window.");
     }
         
-    public Rect GetMonitorRectFromWindow(IntPtr window)
+    public Rect GetMonitorRectFromWindow(IntPtr window = default)
     {
         if (!GetWindowRect(window, out var winRect)) return new Rect();
         var center = new Vector2(winRect.x + winRect.width / 2, winRect.y + winRect.height / 2);
-        return GetMonitorRectFromPoint(center);
+        var resultBasedOnWindowCenterPnt = GetMonitorRectFromPoint(center);
+        if (resultBasedOnWindowCenterPnt == Rect.zero)
+        {
+            Dictionary<float, Rect> overlapMonitors = new();
+            foreach (var mon in _monitors.Values)
+            {
+                if (mon.Overlaps(winRect))
+                {
+                    float xMin = Mathf.Max(mon.xMin, winRect.xMin);
+                    float yMin = Mathf.Max(mon.yMin, winRect.yMin);
+                    float xMax = Mathf.Min(mon.xMax, winRect.xMax);
+                    float yMax = Mathf.Min(mon.yMax, winRect.yMax);
+
+                    float overlapWidth = Mathf.Max(0f, xMax - xMin);
+                    float overlapHeight = Mathf.Max(0f, yMax - yMin);
+                    overlapMonitors.Add(overlapWidth * overlapHeight, mon);
+                }
+            }
+
+            return overlapMonitors[overlapMonitors.Keys.Max()];
+        }
+        return resultBasedOnWindowCenterPnt;
+    }
+    
+    public Rect GetMonitorRectFromHandle(IntPtr monitor)
+    {
+        foreach (var kvp in _monitors.Where(kvp => kvp.Key == monitor))
+        {
+            return kvp.Value;
+        }
+
+        throw new KeyNotFoundException($"No such monitor with that handle.");
+    }
+
+    public Vector2 GetTotalDisplaySize()
+    {
+        XGetWindowAttributes(_display, _unityWindow, out var attr);
+        return new Vector2(attr.width, attr.height);
     }
         
-    public List<Rect> GetAllMonitors()
-    {
-        return new List<Rect>(_monitors);  // Copy to prevent external modification
-    }
+    public Dictionary<IntPtr, Rect> GetAllMonitors() => new(_monitors); // Copy to prevent external modification
 
     private List<IntPtr> FindWindowsByPid(int targetPid)
     {
@@ -818,9 +902,45 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
     }
         
     public bool IsDesktop(IntPtr hwnd) => GetWindowType(hwnd) == "_NET_WM_WINDOW_TYPE_DESKTOP";
-    public bool IsDock(IntPtr hwnd)
+
+    private IntPtr _desktop;
+
+    public IntPtr GetDesktop
     {
-        return GetWindowType(hwnd) == "_NET_WM_WINDOW_TYPE_DOCK";
+        get
+        {
+            if (_desktop == IntPtr.Zero || XGetWindowAttributes(_display, _desktop, out _) == 0)
+            {
+                var allWin = GetAllVisibleWindows();
+                foreach (var win in allWin)
+                {
+                    if (IsDesktop(win))
+                        _desktop = win;
+                }
+            }
+            return _desktop;
+        }
+    }
+    
+    public bool IsDock(IntPtr hwnd) => GetWindowType(hwnd) == "_NET_WM_WINDOW_TYPE_DOCK";
+    
+    private IntPtr _dock;
+
+    public IntPtr GetDock
+    {
+        get
+        {
+            if (_dock == IntPtr.Zero)
+            {
+                foreach (var win in GetAllVisibleWindows())
+                {
+                    if (!IsDock(win)) continue;
+                    _dock = win;
+                    break;
+                }
+            }
+            return _dock;
+        }
     }
 
     public bool IsWindowMaximized(IntPtr hwnd)
@@ -1071,11 +1191,11 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
         var format = Marshal.PtrToStructure<XRenderPictFormat>(formatPtr);
         return format.type == PictTypeDirect && format.direct.alphaMask != 0;
     }
-    
+
     private List<XRectangle> GenerateRectangles(byte[] imageData, int width, int height)
     {
         var rects = new List<XRectangle>();
-
+        
         for (short y = 0; y < height; y++)
         {
             for (short x = 0; x < width; x++)
@@ -1088,7 +1208,7 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
                     {
                         x++;
                     }
-
+        
                     rects.Add(new XRectangle 
                     { 
                         x = startX, 
@@ -1101,7 +1221,7 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
         }
         return rects;
     }
-    
+     
     private void UpdateInputMask(int width, int height)
     {
         if (_isDragging || !_running)
@@ -1274,10 +1394,7 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
                         var ce = ev.configureEvent;
                         if (ce.window == _unityWindow)
                         {
-                            var width = ce.width;
-                            var height = ce.height;
-
-                            UpdateInputMask(width, height);
+                            UpdateInputMask(ce.width, ce.height);
                         }
                         break;
                     }
@@ -1308,16 +1425,8 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
                             if (de.drawable == _unityWindow)
                             {
                                 XDamageSubtract(_display, de.damage, IntPtr.Zero, IntPtr.Zero);
-
-                                // Double-check display before further ops
-                                if (_display == IntPtr.Zero) break;
-
                                 XGetWindowAttributes(_display, _unityWindow, out var attrs);
-                                // Check again before update
-                                if (_display != IntPtr.Zero)
-                                {
-                                    UpdateInputMask(attrs.width, attrs.height);
-                                }
+                                UpdateInputMask(attrs.width, attrs.height);
                             }
                         }
                         break;
@@ -1382,7 +1491,7 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
     private IntPtr _display;
     private IntPtr _rootWindow;
     private IntPtr _unityWindow;
-    private List<Rect> _monitors;
+    private Dictionary<IntPtr, Rect> _monitors;
     private IntPtr _netWmState, _netWmStateFullscreen, _netWmStateMaxHorz, _netWmStateMaxVert, _netWmStateAbove, _netWmStateSkipTaskbar;
     private IntPtr _netWmWindowType, _netWmWindowTypeDock, _netWmWindowTypeNormal;
     private IntPtr _netMoveResizeWindow;

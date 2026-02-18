@@ -85,6 +85,8 @@ providers = {
 objectSelectors = {
 }
 recentSearches = [
+	"shape"
+	"win"
 	"external"
 	"package"
 	"package manager"
@@ -103,8 +105,6 @@ recentSearches = [
 	"manage "
 	"localization"
 	"st: add_ti"
-	"st: food_l"
-	"st: food_t"
 ]
 searchItemFavorites = [
 ]
