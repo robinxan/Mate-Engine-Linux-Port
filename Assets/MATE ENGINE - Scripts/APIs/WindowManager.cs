@@ -191,7 +191,7 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
         return 0;
     }
 
-    private void ShowError(string error) => Debug.LogError(typeof(WindowManager) + ": " + error);
+    private void ShowError(string error) => Debug.LogError(GetType().Name + ": " + error);
 
     private string LookupError(IntPtr errorEvent)
     {
@@ -241,7 +241,7 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
         {
             if (!_x11EventThread.Join(500)) 
             {
-                _x11EventThread.Abort(); 
+                Debug.LogWarning($"{GetType().Name}: X11 event thread did not exit in time. Proceeding with unsafe shutdown.");
             }
         }
         if (_display != IntPtr.Zero)
@@ -1246,7 +1246,7 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
      
     private void UpdateInputMask(int width, int height)
     {
-        if (_isDragging || !_running)
+        if (_isDragging || !_running || _closing)
             return;
 
         // Throttle logic...

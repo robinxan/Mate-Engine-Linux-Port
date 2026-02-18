@@ -227,6 +227,18 @@ public class MEModHandler : MonoBehaviour
             try
             {
                 instance = Instantiate(prefab);
+                foreach (var text in instance.GetComponentsInChildren<TMP_Text>(true))
+                {
+                    text.font = liberationSans;
+                }
+            }
+            catch
+            {
+                // eat up all errors
+            }
+            try
+            {
+                instance = Instantiate(prefab);
                 foreach (var text in GetComponentsInChildren<TMP_Text>())
                 {
                     text.font = liberationSans;
