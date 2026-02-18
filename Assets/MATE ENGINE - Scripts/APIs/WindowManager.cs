@@ -239,9 +239,9 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
 
         if (_x11EventThread != null && _x11EventThread.IsAlive)
         {
-            if (!_x11EventThread.Join(500)) 
+            if (!_x11EventThread.Join(1000)) 
             {
-                Debug.LogWarning($"{GetType().Name}: X11 event thread did not exit in time. Proceeding with unsafe shutdown.");
+                throw new TimeoutException($"{GetType().Name}: X11 event thread did not exit in time.");
             }
         }
         if (_display != IntPtr.Zero)
@@ -270,6 +270,20 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
         }
     }
     #endregion
+    public bool GetWindowPosition(out float x, out float y)
+    {
+        var result = GetWindowPosition();
+        if (result != Vector2.zero)
+        {
+            x = result.x;
+            y = result.y;
+            return true;
+        }
+        x = 0;
+        y = 0;
+        return false;
+    }
+    
         
     public Vector2 GetWindowPosition()
     {
@@ -451,6 +465,20 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
         XFree(prop);
         // Map to string (add XGetAtomName if needed)
         return XGetAtomName(_display, typeAtom);
+    }
+    
+    public bool GetWindowSize(out float x, out float y)
+    {
+        var result = GetWindowSize();
+        if (result != Vector2.zero)
+        {
+            x = result.x;
+            y = result.y;
+            return true;
+        }
+        x = 0;
+        y = 0;
+        return false;
     }
 
     public Vector2 GetWindowSize(IntPtr window = default)
