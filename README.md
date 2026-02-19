@@ -27,19 +27,19 @@ Simply grab a prebuilt one in [Releases](https://github.com/Marksonthegamer/Mate
 - At least 1 GiB of swap space (optional)
 - `libpulse0` and `pipewire-pulse` (if you are using Pipewire as audio server)
 - `libgtk-3-0t64 libglib2.0-0t64 libayatana-appindicator`
-- `libx11-6 libxext6 libxrender1 libxdamage1 libxcursor1 libxrandr2`
+- `libx11-6 libxext6 libxrender1 libxdamage1 libxcursor1 libxrandr2 libxcomposite1`
 
 On Ubuntu and other Debian-based Linux:
 ```bash
-sudo apt install libpulse0 libgtk-3-0t64 libglib2.0-0t64 libayatana-appindicator3-1 libx11-6 libxext6 libxrender1 libxdamage1 libxcursor1 libxrandr2
+sudo apt install libpulse0 libgtk-3-0t64 libglib2.0-0t64 libayatana-appindicator3-1 libx11-6 libxext6 libxrender1 libxdamage1 libxcursor1 libxrandr2 libxcomposite1
 ```
 On Fedora:
 ```bash
-sudo dnf install pulseaudio-libs gtk3 glib2 libX11 libXext libXrender libXrander libXdamage libXcursor libayatana-appindicator-gtk3
+sudo dnf install pulseaudio-libs gtk3 glib2 libX11 libXext libXrender libXrander libXdamage libXcursor libXcomposite libayatana-appindicator-gtk3
 ```
 On Arch Linux:
 ```bash
-sudo pacman -S libpulse gtk3 glib2 libx11 libxext libxrender libxrander libxdamage libxcursor libayatana-appindicator
+sudo pacman -S libpulse gtk3 glib2 libx11 libxext libxrender libxrander libxdamage libxcursor libxcomposite libayatana-appindicator
 ```
 
 Note that if you use GNOME, you will need [AppIndicator and KStatusNotifierItem Support extension](https://extensions.gnome.org/extension/615/appindicator-support/) to show tray icon.
@@ -110,19 +110,19 @@ This project lacks further testing and updates. Feel free to make PRs to contrib
 - 至少 1 GiB 的交换空间（可选）
 - `libpulse0` 和 `pipewire-pulse` (如果你在用 Pipewire 作为音频服务器)
 - `libgtk-3-0t64 libglib2.0-0t64 libayatana-appindicator`
-- `libx11-6 libxext6 libxrender1 libxdamage1 libxcursor1 libxrandr2`
+- `libx11-6 libxext6 libxrender1 libxdamage1 libxcursor1 libxrandr2 libxcomposite1`
 
 以下命令适用于 Ubuntu 和别的基于 Debian 的 Linux:
 ```bash
-sudo apt install libpulse0 libgtk-3-0t64 libglib2.0-0t64 libayatana-appindicator3-1 libx11-6 libxext6 libxrender1 libxdamage1 libxcursor1 libxrandr2
+sudo apt install libpulse0 libgtk-3-0t64 libglib2.0-0t64 libayatana-appindicator3-1 libx11-6 libxext6 libxrender1 libxdamage1 libxcursor1 libxrandr2 libxcomposite1
 ```
 以下命令适用于 Fedora:
 ```bash
-sudo dnf install pulseaudio-libs gtk3 glib2 libX11 libXext libXrender libXrander libXdamage libXcursor libayatana-appindicator-gtk3
+sudo dnf install pulseaudio-libs gtk3 glib2 libX11 libXext libXrender libXrander libXdamage libXcursor libXcomposite libayatana-appindicator-gtk3
 ```
 以下命令适用于 Arch Linux:
 ```bash
-sudo pacman -S libpulse gtk3 glib2 libx11 libxext libxrender libxrander libxdamage libxcursor libayatana-appindicator
+sudo pacman -S libpulse gtk3 glib2 libx11 libxext libxrender libxrander libxdamage libxcursor libxcomposite libayatana-appindicator
 ```
 
 如果你使用 GNOME 桌面环境，你还需要安装 [AppIndicator and KStatusNotifierItem Support extension](https://extensions.gnome.org/extension/615/appindicator-support/) 以显示托盘图标。
