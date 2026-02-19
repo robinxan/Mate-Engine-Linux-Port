@@ -316,7 +316,7 @@ public class AvatarBigScreenHandler : MonoBehaviour
             if (WindowManager.Instance.GetWindowRect(unityWindow, out Rect windowRect))
             {
                 Rect targetScreen = FindBestMonitorRect(windowRect);
-                WindowManager.Instance.SetWindowPosition(targetScreen.x, targetScreen.y);
+                WindowManager.Instance.SetWindowPosition(targetScreen.x, targetScreen.height - windowRect.height);
                 originalWindowRect = windowRect;
                 originalRectSet = true;
             }
