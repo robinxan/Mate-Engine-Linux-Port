@@ -18,8 +18,13 @@ Tested on Ubuntu 24.04 LTS.
 
 ![](https://raw.githubusercontent.com/Marksonthegamer/Mate-Engine-Linux-Port/refs/heads/main/Screenshot.png)
 
-### Usage
-Simply grab a prebuilt one in [Releases](https://github.com/Marksonthegamer/Mate-Engine-Linux-Port/releases/) page. Then, run the `launch.sh` script in the output directory (This script is necessary for window transparency. For KDE, you also need to **disable "Allow applications to block compositing"** in `systemsettings`).
+### Installation
+Simply grab a prebuilt one in [Releases](https://github.com/Marksonthegamer/Mate-Engine-Linux-Port/releases/) page and decompress it. Then, run the `launch.sh` script in the output directory (This script is necessary for window transparency. For KDE, you also need to **disable "Allow applications to block compositing"** in `systemsettings`).
+
+Arch users may simply use the following command:
+```bash
+sudo yay -S mateengine
+```
 
 ### Requirements
 - A common GNU/Linux distro
@@ -35,11 +40,11 @@ sudo apt install libpulse0 libgtk-3-0t64 libglib2.0-0t64 libayatana-appindicator
 ```
 On Fedora:
 ```bash
-sudo dnf install pulseaudio-libs gtk3 glib2 libX11 libXext libXrender libXrander libXdamage libXcursor libXcomposite libayatana-appindicator-gtk3
+sudo dnf install pulseaudio-libs gtk3 glib2 libX11 libXext libXrender libXrandr libXdamage libXcursor libXcomposite libayatana-appindicator-gtk3
 ```
 On Arch Linux:
 ```bash
-sudo pacman -S libpulse gtk3 glib2 libx11 libxext libxrender libxrander libxdamage libxcursor libxcomposite libayatana-appindicator
+sudo pacman -S libpulse gtk3 glib2 libx11 libxext libxrender libxrandr libxdamage libxcursor libxcomposite libayatana-appindicator
 ```
 
 Note that if you use GNOME, you will need [AppIndicator and KStatusNotifierItem Support extension](https://extensions.gnome.org/extension/615/appindicator-support/) to show tray icon.
@@ -101,8 +106,13 @@ This project lacks further testing and updates. Feel free to make PRs to contrib
 
 ![](https://raw.githubusercontent.com/Marksonthegamer/Mate-Engine-Linux-Port/refs/heads/main/Screenshot.png)
 
-### 用法
-在[Releases](https://github.com/Marksonthegamer/Mate-Engine-Linux-Port/releases/)页面获取预构建版本。必须运行输出目录中的`launch.sh`，否则 MateEngne 将缺少透明窗口背景（对于 KDE Plasma 桌面环境，你还需要在 KDE 系统设置中禁用“允许应用程序阻止显示特效合成”）。
+### 安装
+在[Releases](https://github.com/Marksonthegamer/Mate-Engine-Linux-Port/releases/)页面获取预构建版本并解压。必须运行输出目录中的`launch.sh`，否则 MateEngne 将缺少透明窗口背景（对于 KDE Plasma 桌面环境，你还需要在 KDE 系统设置中禁用“允许应用程序阻止显示特效合成”）。
+
+Arch Linux 用户可以直接使用以下命令安装：
+```bash
+sudo yay -S mateengine
+```
 
 ### 系统要求
 - 一个常见的 GNU/Linux 发行版
@@ -118,11 +128,11 @@ sudo apt install libpulse0 libgtk-3-0t64 libglib2.0-0t64 libayatana-appindicator
 ```
 以下命令适用于 Fedora:
 ```bash
-sudo dnf install pulseaudio-libs gtk3 glib2 libX11 libXext libXrender libXrander libXdamage libXcursor libXcomposite libayatana-appindicator-gtk3
+sudo dnf install pulseaudio-libs gtk3 glib2 libX11 libXext libXrender libXrandr libXdamage libXcursor libXcomposite libayatana-appindicator-gtk3
 ```
 以下命令适用于 Arch Linux:
 ```bash
-sudo pacman -S libpulse gtk3 glib2 libx11 libxext libxrender libxrander libxdamage libxcursor libxcomposite libayatana-appindicator
+sudo pacman -S libpulse gtk3 glib2 libx11 libxext libxrender libxrandr libxdamage libxcursor libxcomposite libayatana-appindicator
 ```
 
 如果你使用 GNOME 桌面环境，你还需要安装 [AppIndicator and KStatusNotifierItem Support extension](https://extensions.gnome.org/extension/615/appindicator-support/) 以显示托盘图标。
