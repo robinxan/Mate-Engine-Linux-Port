@@ -35,7 +35,7 @@ public class AvatarBigScreenHandler : MonoBehaviour
     private Quaternion originalCamRot;
     private float originalFOV;
     private float originalOrthoSize;
-    private Rect originalWindowRect;
+    private RectInt originalWindowRect;
     private bool originalRectSet = false;
     private Transform bone;
     private AvatarAnimatorController avatarAnimatorController;
@@ -80,7 +80,7 @@ public class AvatarBigScreenHandler : MonoBehaviour
             originalFOV = MainCamera.fieldOfView;
             originalOrthoSize = MainCamera.orthographicSize;
         }
-        if (unityWindow != IntPtr.Zero && WindowManager.Instance.GetWindowRect(unityWindow, out Rect r))
+        if (unityWindow != IntPtr.Zero && WindowManager.Instance.GetWindowRect(unityWindow, out RectInt r))
         {
             originalWindowRect = r;
             originalRectSet = true;
@@ -250,7 +250,7 @@ public class AvatarBigScreenHandler : MonoBehaviour
             if (unityWindow != IntPtr.Zero && originalRectSet)
             {
                 WindowManager.Instance.SetWindowPosition(originalWindowRect.position);
-                WindowManager.Instance.SetWindowSize(new Vector2(originalWindowRect.width, originalWindowRect.height));
+                WindowManager.Instance.SetWindowSize(new Vector2Int(originalWindowRect.width, originalWindowRect.height));
             }
             if (MainCamera != null)
             {
@@ -262,11 +262,11 @@ public class AvatarBigScreenHandler : MonoBehaviour
         }
     }
     
-    private Rect FindBestMonitorRect(Rect windowRect)
+    private RectInt FindBestMonitorRect(RectInt windowRect)
     {
-        if (WindowManager.Instance == null) return new Rect(0, 0, Screen.currentResolution.width, Screen.currentResolution.height);
+        if (WindowManager.Instance == null) return new RectInt(0, 0, Screen.currentResolution.width, Screen.currentResolution.height);
         
-        List<Rect> monitorRects = WindowManager.Instance.GetAllMonitors().Values.ToList();
+        List<RectInt> monitorRects = WindowManager.Instance.GetAllMonitors().Values.ToList();
         int idx = 0;
         float maxArea = 0;
         for (int i = 0; i < monitorRects.Count; i++)
@@ -274,10 +274,10 @@ public class AvatarBigScreenHandler : MonoBehaviour
             float overlap = OverlapArea(windowRect, monitorRects[i]);
             if (overlap > maxArea) { idx = i; maxArea = overlap; }
         }
-        return new(new((monitorRects[idx].x + monitorRects[idx].width) / 2f - windowRect.width / 2, (monitorRects[idx].y + monitorRects[idx].height) / 2f - windowRect.height / 2), monitorRects[idx].size);
+        return new(new((monitorRects[idx].x + monitorRects[idx].width) / 2 - windowRect.width / 2, (monitorRects[idx].y + monitorRects[idx].height) / 2 - windowRect.height / 2), monitorRects[idx].size);
     }
 
-    float OverlapArea(Rect a, Rect b)
+    float OverlapArea(RectInt a, RectInt b)
     {
         float x1 = Mathf.Max(a.x, b.x), x2 = Mathf.Min(a.x + a.width, b.x + b.width);
         float y1 = Mathf.Max(a.y, b.y), y2 = Mathf.Min(a.y + a.height, b.y + b.height);
@@ -313,9 +313,9 @@ public class AvatarBigScreenHandler : MonoBehaviour
 
         if (toFadeY && unityWindow != IntPtr.Zero)
         {
-            if (WindowManager.Instance.GetWindowRect(unityWindow, out Rect windowRect))
+            if (WindowManager.Instance.GetWindowRect(unityWindow, out RectInt windowRect))
             {
-                Rect targetScreen = FindBestMonitorRect(windowRect);
+                RectInt targetScreen = FindBestMonitorRect(windowRect);
                 WindowManager.Instance.SetWindowPosition(targetScreen.x, targetScreen.height - windowRect.height);
                 originalWindowRect = windowRect;
                 originalRectSet = true;

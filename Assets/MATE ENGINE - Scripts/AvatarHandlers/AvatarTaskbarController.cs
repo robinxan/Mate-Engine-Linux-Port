@@ -29,7 +29,7 @@ public class AvatarTaskbarController : MonoBehaviour
 
     private IntPtr unityHWND;
     private Vector2 unityPos;
-    private Rect taskbarRect;
+    private RectInt taskbarRect;
     private Rect pinkZoneDesktopRect;
 
     private Animator animator;

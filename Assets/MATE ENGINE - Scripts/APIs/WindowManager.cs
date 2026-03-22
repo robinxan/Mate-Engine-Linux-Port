@@ -11,7 +11,6 @@ using UnityEngine.EventSystems;
 using Debug = UnityEngine.Debug;
 using Unity.Burst;
 using Unity.Collections;
-using UnityEngine.SceneManagement;
 
 public enum DesktopEnvironments
 {
@@ -36,29 +35,20 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
     private DesktopEnvironments _currentDesktopEnv;
     private SessionTypes _currentSessionType;
 
-    private Vector2 _initialMousePos;
-    private Vector2 _initialWindowPos;
+    private Vector2Int _initialMousePos;
+    private Vector2Int _initialWindowPos;
     private bool _isDragging;
 
     private bool _dontUpdateCursor;
     
     public bool transparentInputEnabled = true;
 
-    public IntPtr Display
-    {
-        get { return _display; }
-    }
+    public IntPtr Display => _display;
 
-    public IntPtr RootWindow
-    {
-        get { return _rootWindow; }
-    }
+    public IntPtr RootWindow => _rootWindow;
 
-    public IntPtr UnityWindow
-    {
-        get { return _unityWindow; }
-    }
-        
+    public IntPtr UnityWindow => _unityWindow;
+
     #region Unity Events
 
     private void OnEnable()
@@ -452,39 +442,43 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
     }
     
         
-    public Vector2 GetWindowPosition()
+    public Vector2Int GetWindowPosition()
     {
         if (_display != IntPtr.Zero && _unityWindow != IntPtr.Zero)
         {
             // Use XTranslateCoordinates to get absolute position
             if (XTranslateCoordinates(_display, _unityWindow, _rootWindow, 0, 0, out var absX, out var absY, out _))
             {
-                return new Vector2(absX, absY);
+                return new Vector2Int(absX, absY);
             }
 
             ShowError("XTranslateCoordinates failed.");
         }
 
-        return Vector2.zero;
+        return Vector2Int.zero;
     }
 
-    public void SetWindowPosition(float x, float y)
+    public void SetWindowPosition(int x, int y)
     {
-        SetWindowPosition(new Vector2(x, y));
+        SetWindowPosition(new Vector2Int(x, y));
     }
 
-    public void SetWindowPosition(Vector2 position)
+    public void SetWindowPosition(Vector2Int position)
     {
-        if (!SceneManager.GetActiveScene().name.Contains("Test"))
-            if (SaveLoadHandler.Instance.data.useLegacyMoveResizeCalls)
-            {
-                SetWindowPositionLegacy(position);
-                return;
-            }
+        if (SaveLoadHandler.Instance.data.useLegacyMoveResizeCalls)
+        { 
+            SetWindowPositionLegacy(position);
+            return;
+        }
         if (_display != IntPtr.Zero && _unityWindow != IntPtr.Zero)
         {
             if (_currentDesktopEnv == DesktopEnvironments.Hyprland){
                 WaylandUtility.SetWindowPositionHyprland(position);
+                return;
+            }
+            if (_currentDesktopEnv == DesktopEnvironments.Kde && _currentSessionType == SessionTypes.Wayland)
+            {
+                Singleton<KWinManager>.Instance.MoveWindow(position);
                 return;
             }
             if (_netMoveResizeWindow == IntPtr.Zero)
@@ -500,8 +494,8 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
                 format = 32,
             };
             xClient.data0 = new IntPtr((1 << 12) | (1 << 9) | (1 << 8) | 10);
-            xClient.data1 = new((int)position.x);
-            xClient.data2 = new((int)position.y);
+            xClient.data1 = new(position.x);
+            xClient.data2 = new(position.y);
             xClient.data3 = IntPtr.Zero;
             xClient.data4 = IntPtr.Zero;
 
@@ -510,11 +504,11 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
         }
     }
 
-    private void SetWindowPositionLegacy(Vector2 position)
+    private void SetWindowPositionLegacy(Vector2Int position)
     {
         if (_display != IntPtr.Zero && _unityWindow != IntPtr.Zero)
         {
-            XMoveWindow(_display, _unityWindow, (int)position.x, (int)position.y);
+            XMoveWindow(_display, _unityWindow, position.x, position.y);
             XFlush(_display);
         }
     }
@@ -532,7 +526,7 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
         return Vector2.zero;
     }
     
-    public void SetWindowPositionMonitorRelative(int monitorIndex, Vector2 relativePos)
+    public void SetWindowPositionMonitorRelative(int monitorIndex, Vector2Int relativePos)
     {
         if (_monitors == null || _monitors.Count == 0)
             QueryMonitors();
@@ -543,7 +537,7 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
         if (_monitors == null) return;
         var monitorRect = _monitors.ElementAt(monitorIndex);
 
-        var absolutePos = new Vector2(
+        var absolutePos = new Vector2Int(
             monitorRect.Value.x + relativePos.x,
             monitorRect.Value.y + relativePos.y
         );
@@ -606,7 +600,7 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
                 continue;
             }
 
-            var monRect = new Rect(crtcInfo.x, crtcInfo.y, crtcInfo.width, crtcInfo.height);
+            var monRect = new RectInt(crtcInfo.x, crtcInfo.y, (int)crtcInfo.width, (int)crtcInfo.height);
             _monitors.Add(crtcInfoHandle, monRect);
 
             XRRFreeCrtcInfo(crtcInfoHandle);
@@ -663,12 +657,12 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
         return Vector2.zero;
     }
     
-    public void SetWindowSize(float x, float y)
+    public void SetWindowSize(int x, int y)
     {
-        SetWindowSize(new Vector2(x, y));
+        SetWindowSize(new Vector2Int(x, y));
     }
 
-    public void SetWindowSize(Vector2 size)
+    public void SetWindowSize(Vector2Int size)
     {
         if (SaveLoadHandler.Instance.data.useLegacyMoveResizeCalls)
         {
@@ -692,8 +686,8 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
             xClient.data0 = new IntPtr((1 << 12) | (1 << 10) | (1 << 11));
             xClient.data1 = IntPtr.Zero;
             xClient.data2 = IntPtr.Zero;
-            xClient.data3 = new((int)size.x);
-            xClient.data4 = new((int)size.y);
+            xClient.data3 = new(size.x);
+            xClient.data4 = new(size.y);
             
             XSendEvent(_display, _rootWindow, false, SubstructureRedirectMask | SubstructureNotifyMask, ref xClient);
             XFlush(_display);
@@ -709,8 +703,12 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
         }
     }
 
-    public Vector2 GetMousePosition()
+    public Vector2Int GetMousePosition()
     {
+        if (SaveLoadHandler.Instance.data.forceKWinApi && _currentDesktopEnv == DesktopEnvironments.Kde)
+        {
+            return Singleton<KWinManager>.Instance.GetCursorPos().Result;
+        }
         // Query mouse position
         int rootX = 0, rootY = 0;
         IntPtr rootReturn = IntPtr.Zero, childReturn = IntPtr.Zero;
@@ -721,13 +719,13 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
                 ref winY, ref maskReturn))
         {
             ShowError("No mouse found.");
-            return Vector2.zero;
+            return Vector2Int.zero;
         }
 
-        return new Vector2(rootX, rootY);
+        return new Vector2Int(rootX, rootY);
     }
     
-    public bool GetMousePosition(out Vector2 position)
+    public bool GetMousePosition(out Vector2Int position)
     {
         // Query mouse position
         int rootX = 0, rootY = 0;
@@ -736,7 +734,7 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
         uint maskReturn = 0;
 
         bool result = XQueryPointer(_display, _rootWindow, ref rootReturn, ref childReturn, ref rootX, ref rootY, ref winX, ref winY, ref maskReturn);
-        position = new Vector2(rootX, rootY);
+        position = new Vector2Int(rootX, rootY);
         return result;
     }
         
@@ -781,13 +779,13 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
         return false;
     }
         
-    public Rect GetMonitorRectFromPoint(Vector2 point)
+    public RectInt GetMonitorRectFromPoint(Vector2Int point)
     {
         foreach (var mon in _monitors.Values)
         {
             if (mon.Contains(point)) return mon;
         }
-        return Rect.zero;
+        return RectInt.zero;
     }
 
     public IntPtr GetMonitorFromWindow(IntPtr window = default)
@@ -801,14 +799,14 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
         throw new KeyNotFoundException($"No such monitor includes the center point of that window.");
     }
         
-    public Rect GetMonitorRectFromWindow(IntPtr window = default)
+    public RectInt GetMonitorRectFromWindow(IntPtr window = default)
     {
-        if (!GetWindowRect(window, out var winRect)) return new Rect();
-        var center = new Vector2(winRect.x + winRect.width / 2, winRect.y + winRect.height / 2);
+        if (!GetWindowRect(window, out var winRect)) return new RectInt();
+        var center = new Vector2Int(winRect.x + winRect.width / 2, winRect.y + winRect.height / 2);
         var resultBasedOnWindowCenterPnt = GetMonitorRectFromPoint(center);
-        if (resultBasedOnWindowCenterPnt == Rect.zero)
+        if (resultBasedOnWindowCenterPnt == RectInt.zero)
         {
-            Dictionary<float, Rect> overlapMonitors = new();
+            Dictionary<float, RectInt> overlapMonitors = new();
             foreach (var mon in _monitors.Values)
             {
                 if (mon.Overlaps(winRect))
@@ -829,7 +827,7 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
         return resultBasedOnWindowCenterPnt;
     }
     
-    public Rect GetMonitorRectFromHandle(IntPtr monitor)
+    public RectInt GetMonitorRectFromHandle(IntPtr monitor)
     {
         foreach (var kvp in _monitors.Where(kvp => kvp.Key == monitor))
         {
@@ -845,7 +843,7 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
         return new Vector2(attr.width, attr.height);
     }
         
-    public Dictionary<IntPtr, Rect> GetAllMonitors() => new(_monitors); // Copy to prevent external modification
+    public Dictionary<IntPtr, RectInt> GetAllMonitors() => new(_monitors); // Copy to prevent external modification
 
     private List<IntPtr> FindWindowsByPid(int targetPid)
     {
@@ -863,6 +861,17 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
         }
 
         return result;
+    }
+
+    public int GetWindowPid(string kWinUuid)
+    {
+        if (_currentDesktopEnv == DesktopEnvironments.Kde)
+        {
+            return Singleton<KWinManager>.Instance.GetWindowPid(kWinUuid).Result;
+        }
+        
+        ShowError("The argument is passed as a string which is supposed to be a UUID of a window managed by KWin.\nHowever KWin/KDE is not detected.");
+        return -1;
     }
 
     public int GetWindowPid(IntPtr window)
@@ -951,14 +960,26 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
         }
     }
 
-    public bool GetWindowRect(out Rect rect)
+    public bool GetWindowRect(out RectInt rect)
     {
         return GetWindowRect(_unityWindow, out rect);
     }
 
-    public bool GetWindowRect(IntPtr window, out Rect rect)
+    public void GetWindowRect(string kWinUuid, out RectInt rect)
     {
-        rect = new Rect();
+        if (_currentDesktopEnv == DesktopEnvironments.Kde)
+        {
+            rect = Singleton<KWinManager>.Instance.GetWindowGeometry(kWinUuid).Result;
+            return;
+        }
+
+        ShowError("The first argument is passed as a string which is supposed to be a UUID of a window managed by KWin.\nHowever KWin/KDE is not detected.");
+        rect = RectInt.zero;
+    }
+
+    public bool GetWindowRect(IntPtr window, out RectInt rect)
+    {
+        rect = new RectInt();
         var result = XGetWindowAttributes(_display, window, out var attr);
         if (result == 0) return false;
 
@@ -1155,7 +1176,7 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
         if (!GetWindowRect(hwnd, out var rect)) return false;
         int screenW = UnityEngine.Display.main.systemWidth, screenH = UnityEngine.Display.main.systemHeight;
         var tol = 2;
-        var sizeMatch = Mathf.Abs((int)rect.width - screenW) <= tol && Mathf.Abs((int)rect.height - screenH) <= tol;
+        var sizeMatch = Mathf.Abs(rect.width - screenW) <= tol && Mathf.Abs(rect.height - screenH) <= tol;
         if (!sizeMatch) return false;
         // Check _NET_WM_STATE_FULLSCREEN
         if (_netWmState == IntPtr.Zero) return true;  // Fallback if no EWMH
@@ -1244,6 +1265,16 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
             return XGetSelectionOwner(_display, selectionAtom) != 0;
         }
         return false;
+    }
+
+    public List<string> GetClientStackingListKWin()
+    {
+        if (_currentDesktopEnv == DesktopEnvironments.Kde)
+        {
+            return Singleton<KWinManager>.Instance.GetAllWindows().Result;
+        }
+        ShowError("KWin/KDE is not detected.");
+        return new List<string>();
     }
     
     public List<IntPtr> GetClientStackingList()
@@ -1698,7 +1729,7 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
     private IntPtr _display;
     private IntPtr _rootWindow;
     private IntPtr _unityWindow;
-    private Dictionary<IntPtr, Rect> _monitors;
+    private Dictionary<IntPtr, RectInt> _monitors;
     private IntPtr _netWmState, _netWmStateFullscreen, _netWmStateMaxHorz, _netWmStateMaxVert, _netWmStateAbove, _netWmStateSkipTaskbar;
     private IntPtr _netWmWindowType, _netWmWindowTypeDock, _netWmWindowTypeNormal;
     private IntPtr _netMoveResizeWindow;

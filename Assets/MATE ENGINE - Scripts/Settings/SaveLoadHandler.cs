@@ -188,6 +188,7 @@ public class SaveLoadHandler : MonoBehaviour
         public bool verboseDiscordRPCLog = false;
         public WindowType windowType = WindowType.Normal;
         public string ollamaModel = "phi3:mini";
+        public bool forceKWinApi = false;
 
         //ALARM
         [Serializable]

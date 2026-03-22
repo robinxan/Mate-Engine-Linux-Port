@@ -90,13 +90,17 @@ public class AvatarWindowHandler : MonoBehaviour
     
     // X11 Handles are IntPtr, just like HWND
     IntPtr snappedHWND = IntPtr.Zero, unityHWND = IntPtr.Zero;
+    private string snappedUUID;
+
+    private string unityKWinUuid;
     
     Vector2 lastDesktopPosition;
     readonly List<WindowEntry> cachedWindows = new List<WindowEntry>(128);
     readonly List<WindowEntry> activeOccluders = new List<WindowEntry>(16);
     
     // We cache the stacking list to avoid querying X11 multiple times per frame
-    List<IntPtr> _currentStackingList = new List<IntPtr>();
+    List<IntPtr> _currentStackingList = new();
+    List<string> _currentClientList = new();
 
     Animator animator;
     AvatarAnimatorController controller;
@@ -134,19 +138,27 @@ public class AvatarWindowHandler : MonoBehaviour
     // Helper struct to match original logic's reliance on Left/Top/Right/Bottom
     public struct RECT { 
         public int Left, Top, Right, Bottom; 
-        public static RECT FromRect(Rect r) => new RECT { 
-            Left = (int)r.x, 
-            Top = (int)r.y, 
-            Right = (int)(r.x + r.width), 
-            Bottom = (int)(r.y + r.height) 
+        public static RECT FromRect(RectInt r) => new RECT { 
+            Left = r.x, 
+            Top = r.y, 
+            Right = r.x + r.width, 
+            Bottom = r.y + r.height 
         };
     }
 
-    struct WindowEntry { public IntPtr hwnd; public RECT rect; public bool isTaskbar; }
+    struct WindowEntry { 
+        public IntPtr hwnd; 
+        public string uuid; // Add this
+        public RECT rect; 
+        public bool isTaskbar; 
+    }
 
     void Start()
     {
         unityHWND = WindowManager.Instance.UnityWindow;
+        if (SaveLoadHandler.Instance.data.forceKWinApi)
+            unityKWinUuid = Singleton<KWinManager>.Instance.UnityWindow;
+        
         _currentPid = System.Diagnostics.Process.GetCurrentProcess().Id;
 
         animator = GetComponent<Animator>();
@@ -210,7 +222,7 @@ public class AvatarWindowHandler : MonoBehaviour
     {
         if (WindowManager.Instance == null || unityHWND == IntPtr.Zero || animator == null || controller == null) return;
         
-        if (snappedHWND != IntPtr.Zero)
+        if (snappedHWND != IntPtr.Zero || !string.IsNullOrEmpty(snappedUUID))
         {
             if ((transform.lossyScale - _prevLossyScale).sqrMagnitude > 1e-8f) { _snapSmoothingActive = false; _snapVelX = _snapVelY = 0f; }
             _prevLossyScale = transform.lossyScale;
@@ -235,9 +247,9 @@ public class AvatarWindowHandler : MonoBehaviour
         if (controller.isDragging && !wasDragging)
         {
             var cp = WindowManager.Instance.GetMousePosition();
-            _dragStartCursorX = (int)cp.x; 
-            _dragStartCursorY = (int)cp.y;
-            if (snappedHWND != IntPtr.Zero && isWindowSitNow) _snapCursorY = (int)cp.y;
+            _dragStartCursorX = cp.x; 
+            _dragStartCursorY = cp.y;
+            if (snappedHWND != IntPtr.Zero && isWindowSitNow) _snapCursorY = cp.y;
 
             _dragStartTime = Time.unscaledTime;
             _canSitHold = false;
@@ -263,8 +275,9 @@ public class AvatarWindowHandler : MonoBehaviour
             }
         }
 
-        if (snappedHWND != IntPtr.Zero)
+        if (snappedHWND != IntPtr.Zero || !string.IsNullOrEmpty(snappedUUID))
         {
+            if (SaveLoadHandler.Instance.data.forceKWinApi) return;
             bool handled = false;
             // Validate snapped window existence
             bool found = false;
@@ -298,7 +311,7 @@ public class AvatarWindowHandler : MonoBehaviour
             if (_postSettleFrames > 0) _postSettleFrames--;
             else
             {
-                if (WindowManager.Instance.GetWindowRect(snappedHWND, out Rect r))
+                if (GetWindowRect(SaveLoadHandler.Instance.data.forceKWinApi ? snappedUUID : snappedHWND, out RectInt r))
                 {
                     RECT tr = RECT.FromRect(r);
                     CalibrateSeatAnchorToDesktopY(tr.Top + seatOffsetPx);
@@ -316,6 +329,21 @@ public class AvatarWindowHandler : MonoBehaviour
             }
         }
         wasDragging = controller.isDragging;
+    }
+
+    bool GetWindowRect(object hWid, out RectInt rect)
+    {
+        if (hWid is string kWinUuid)
+        {
+            WindowManager.Instance.GetWindowRect(kWinUuid, out rect);
+            return true;
+        }
+        if (hWid is IntPtr hWnd)
+        {
+            return WindowManager.Instance.GetWindowRect(hWnd, out rect);
+        }
+        rect = RectInt.zero;
+        return false;
     }
 
     void LateUpdate() { UpdateOccluderQuadsFrameSync(); }
@@ -353,7 +381,7 @@ public class AvatarWindowHandler : MonoBehaviour
         
         // On X11, Unity Window Client Rect is basically the window rect (decorations are handled by WM)
         // But for screen mapping, we need the window's position on screen.
-        if (!WindowManager.Instance.GetWindowRect(unityHWND, out Rect uRect)) return false;
+        if (!GetWindowRect(SaveLoadHandler.Instance.data.forceKWinApi ? unityKWinUuid : unityHWND, out RectInt uRect)) return false;
         
         RECT uCli = RECT.FromRect(uRect);
         _haveUnityCli = true; _lastUnityCli = uCli;
@@ -402,6 +430,13 @@ public class AvatarWindowHandler : MonoBehaviour
         int pid = WindowManager.Instance.GetWindowPid(hWnd);
         return pid == _currentPid;
     }
+    
+    bool IsSameProcessWindow(string uuid)
+    {
+        if (string.IsNullOrEmpty(uuid)) return false;
+        int pid = WindowManager.Instance.GetWindowPid(uuid);
+        return pid == _currentPid;
+    }
 
     void ClearSnapAndHide(bool fromUnsnap = false)
     {
@@ -411,6 +446,7 @@ public class AvatarWindowHandler : MonoBehaviour
         if (controller != null && controller.isDragging) _recentUnsnap = true;
         if (fromUnsnap) _unsnapCooldownUntil = Time.unscaledTime + Mathf.Max(0f, unsnapCooldownSeconds);
         snappedHWND = IntPtr.Zero;
+        snappedUUID = null;
         seatCalibrated = false;
         SetStuckAboveSnapped(false);
         if (animator != null) { animator.SetBool("isWindowSit", false); animator.SetBool("isTaskbarSit", false); }
@@ -422,6 +458,19 @@ public class AvatarWindowHandler : MonoBehaviour
     void UpdateCachedWindows()
     {
         cachedWindows.Clear();
+        if (SaveLoadHandler.Instance.data.forceKWinApi)
+        {
+            _currentClientList = WindowManager.Instance.GetClientStackingListKWin();
+            foreach (var uuid in  _currentClientList)
+            {
+                if (uuid == unityKWinUuid || IsSameProcessWindow(uuid)) continue;
+
+                WindowManager.Instance.GetWindowRect(uuid, out RectInt r);
+                cachedWindows.Add(new WindowEntry {hwnd = IntPtr.Zero, isTaskbar = false, rect = RECT.FromRect(r), uuid = uuid});
+            }
+
+            return;
+        }
         // Get Z-ordered list (bottom to top usually in X11 stacking lists)
         _currentStackingList = WindowManager.Instance.GetClientStackingList(); 
         
@@ -430,7 +479,7 @@ public class AvatarWindowHandler : MonoBehaviour
         foreach(var hWnd in _currentStackingList)
         {
             if (hWnd == unityHWND) continue;
-            if (!WindowManager.Instance.GetWindowRect(hWnd, out Rect r)) continue;
+            if (!WindowManager.Instance.GetWindowRect(hWnd, out RectInt r)) continue;
             if (!WindowManager.Instance.IsWindowVisible(hWnd)) continue;
             
             if (IsSameProcessWindow(hWnd)) continue;
@@ -452,19 +501,40 @@ public class AvatarWindowHandler : MonoBehaviour
     void RebuildActiveOccluders()
     {
         activeOccluders.Clear();
-        for (int i = 0; i < cachedWindows.Count && activeOccluders.Count < maxOtherQuads; i++)
+        bool useKWin = SaveLoadHandler.Instance.data.forceKWinApi;
+    
+        // Determine target index based on active API
+        int myIdx = useKWin ? _currentClientList.IndexOf(snappedUUID) : _currentStackingList.IndexOf(snappedHWND);
+        if (myIdx < 0) return;
+
+        int listCount = useKWin ? _currentClientList.Count : _currentStackingList.Count;
+
+        // Scan all windows above our target in the stack
+        for (int i = myIdx + 1; i < listCount; i++)
         {
-            var w = cachedWindows[i];
-            if (w.hwnd == unityHWND || w.hwnd == snappedHWND || IsSameProcessWindow(w.hwnd)) continue;
-            
-            // X11 Occlusion Check: Is 'w' above 'snappedHWND'?
-            if (!(w.isTaskbar || IsAboveInZOrder(w.hwnd, snappedHWND))) continue;
-            
-            activeOccluders.Add(w);
+            if (activeOccluders.Count >= maxOtherQuads) break;
+
+            object otherId = useKWin ? (object)_currentClientList[i] : (object)_currentStackingList[i];
+            if (useKWin && (string)otherId == unityKWinUuid) continue;
+            if (!useKWin && (IntPtr)otherId == unityHWND) continue;
+
+            if (GetWindowRect(otherId, out RectInt r))
+            {
+                // Only add if it actually overlaps our snapped window's space
+                var rect = new Rect(r.x, r.y, r.width, r.height);
+                if (rect.Overlaps(new Rect(_prevSnapRect.Left, _prevSnapRect.Top, _prevSnapRect.Right - _prevSnapRect.Left, _prevSnapRect.Bottom - _prevSnapRect.Top)))
+                {
+                    activeOccluders.Add(new WindowEntry { 
+                        hwnd = useKWin ? IntPtr.Zero : (IntPtr)otherId, 
+                        uuid = useKWin ? (string)otherId : null,
+                        rect = RECT.FromRect(r) 
+                    });
+                }
+            }
         }
     }
 
-    bool IsSitEligibleWindow(IntPtr hWnd, Rect r)
+    bool IsSitEligibleWindow(IntPtr hWnd, RectInt r)
     {
         if (r.width < 200 || r.height < 60) return false;
         
@@ -508,6 +578,8 @@ public class AvatarWindowHandler : MonoBehaviour
         // Ideally we want to snap to the TOP most window under cursor.
         // GetClientStackingList returns Bottom -> Top.
         // So we iterate cachedWindows backwards (if it was populated from StackingList directly)
+
+        var useKWin = SaveLoadHandler.Instance.data.forceKWinApi;
         
         for (int i = cachedWindows.Count - 1; i >= 0; i--)
         {
@@ -519,13 +591,15 @@ public class AvatarWindowHandler : MonoBehaviour
             if (!(px >= left && px <= right)) continue;
             if (Mathf.Abs(py - top) > sprF) continue;
             
-            if (IsSameProcessWindow(win.hwnd)) continue;
+            if (useKWin && IsSameProcessWindow(win.uuid)) continue;
+            if (!useKWin && IsSameProcessWindow(win.hwnd)) continue;
             
             // Occlusion Check on cursor point
-            if (IsOccludedByHigherWindowsAtPoint(win.hwnd, Mathf.RoundToInt(px), Mathf.RoundToInt(py))) continue;
+            if (!useKWin && IsOccludedByHigherWindowsAtPoint(new WindowEntry {hwnd = win.hwnd}, new (Mathf.RoundToInt(px), Mathf.RoundToInt(py)))) continue;
 
             lastDesktopPosition = WindowManager.Instance.GetWindowPosition();
-            snappedHWND = win.hwnd;
+            if (useKWin) snappedUUID = win.uuid;
+            else snappedHWND = win.hwnd;
             _guardZoneActive = false;
 
             animator.SetBool("isWindowSit", true);
@@ -546,7 +620,7 @@ public class AvatarWindowHandler : MonoBehaviour
             SetStuckAboveSnapped(true);
 
             var cp = WindowManager.Instance.GetMousePosition();
-            _snapCursorY = (int)cp.y;
+            _snapCursorY = cp.y;
             
             _guard = Mathf.Max(1, snapGuardFrames);
             _latch = Mathf.Max(1, snapLatchFrames);
@@ -558,7 +632,8 @@ public class AvatarWindowHandler : MonoBehaviour
             RebuildActiveOccluders(); 
             UpdateOccluderQuadsFrameSync();
             
-            if (WindowManager.Instance.GetWindowRect(win.hwnd, out Rect tr)) PinToTarget(RECT.FromRect(tr)); 
+            object hWid = useKWin ? win.uuid : win.hwnd;
+            if (GetWindowRect(hWid, out RectInt tr)) PinToTarget(RECT.FromRect(tr));
             else PinToTarget(win.rect);
             return;
         }
@@ -576,7 +651,7 @@ public class AvatarWindowHandler : MonoBehaviour
 
     bool CalibrateSeatAnchorToDesktopY(float targetDesktopY)
     {
-        if (targetCamera == null || !WindowManager.Instance.GetWindowRect(unityHWND, out Rect uRect)) return false;
+        if (targetCamera == null || !WindowManager.Instance.GetWindowRect(unityHWND, out RectInt uRect)) return false;
         RECT uCli = RECT.FromRect(uRect);
 
         Matrix4x4 inv = transform.worldToLocalMatrix;
@@ -639,7 +714,15 @@ public class AvatarWindowHandler : MonoBehaviour
 
     void FollowSnapped(bool dragging)
     {
-        if (snappedHWND == IntPtr.Zero || !WindowManager.Instance.GetWindowRect(snappedHWND, out Rect r)) { ClearSnapAndHide(); return; }
+        bool useKWin = SaveLoadHandler.Instance.data.forceKWinApi;
+        object activeTarget = useKWin ? snappedUUID : snappedHWND;
+
+        if ((!useKWin && snappedHWND == IntPtr.Zero) || (useKWin && string.IsNullOrEmpty(snappedUUID)) || 
+            !GetWindowRect(activeTarget, out RectInt r)) 
+        { 
+            ClearSnapAndHide(); 
+            return; 
+        }
         RECT tr = RECT.FromRect(r);
         
         CancelSnapSmoothingIfTargetMoved(tr);
@@ -661,7 +744,7 @@ public class AvatarWindowHandler : MonoBehaviour
         int dx = Mathf.RoundToInt(desiredPX - px);
         int dy = Mathf.RoundToInt(desiredPY - py);
 
-        WindowManager.Instance.GetWindowRect(unityHWND, out Rect urRect);
+        WindowManager.Instance.GetWindowRect(unityHWND, out RectInt urRect);
         RECT ur = RECT.FromRect(urRect);
         
         int w = ur.Right - ur.Left, h = ur.Bottom - ur.Top;
@@ -701,12 +784,17 @@ public class AvatarWindowHandler : MonoBehaviour
         // Find if snapped window is still valid and in cached list
         bool found = false;
         WindowEntry win = default;
-        for(int i=0; i<cachedWindows.Count; i++) { if(cachedWindows[i].hwnd == snappedHWND) { win = cachedWindows[i]; found = true; break; } }
+        for(int i=0; i<cachedWindows.Count; i++) { if(cachedWindows[i].hwnd == snappedHWND || cachedWindows[i].uuid == snappedUUID) { win = cachedWindows[i]; found = true; break; } }
         if (!found) return false; // Window gone
 
         // Re-query rect to be safe or use cached? Better use cached from enum for consistency or query fresh if needed.
         // Let's query fresh for "StillNear" check to be responsive.
-        if (WindowManager.Instance.GetWindowRect(snappedHWND, out Rect r)) win.rect = RECT.FromRect(r);
+        if (!SaveLoadHandler.Instance.data.forceKWinApi && WindowManager.Instance.GetWindowRect(snappedHWND, out RectInt r)) win.rect = RECT.FromRect(r);
+        if (SaveLoadHandler.Instance.data.forceKWinApi)
+        {
+            WindowManager.Instance.GetWindowRect(snappedUUID, out RectInt r1);
+            win.rect = RECT.FromRect(r1);
+        }
         else return false;
 
         if (!ComputeZoneDesktop(out float px, out float py)) return true;
@@ -734,40 +822,63 @@ public class AvatarWindowHandler : MonoBehaviour
     }
     
     // Check if 'hwnd' is occluded by any window that is HIGHER in the z-order
-    bool IsOccludedByHigherWindowsAtPoint(IntPtr hwnd, int x, int y)
+    bool IsOccludedByHigherWindowsAtPoint(WindowEntry targetWin, Vector2 desktopPos)
     {
-        // _currentStackingList is Bottom -> Top.
-        // Find index of 'hwnd'
-        int myIndex = _currentStackingList.IndexOf(hwnd);
-        if (myIndex == -1) return false; // Should not happen if it's visible
-        
-        // Iterate windows ABOVE 'hwnd'
-        for (int i = myIndex + 1; i < _currentStackingList.Count; i++)
-        {
-            IntPtr h = _currentStackingList[i];
-            if (h == unityHWND || IsSameProcessWindow(h)) continue;
-            
-            if (!WindowManager.Instance.GetWindowRect(h, out Rect r)) continue;
-            if (!WindowManager.Instance.IsWindowVisible(h)) continue;
+        bool useKWin = SaveLoadHandler.Instance.data.forceKWinApi;
+        Vector2Int posI = Vector2Int.RoundToInt(desktopPos);
 
-            // X11 Rect is (x, y, w, h). 
-            // Simple point in rect check
-            bool hit = x >= r.x && x <= r.x + r.width && y >= r.y && y <= r.y + r.height;
-            if (!hit) continue;
+        if (useKWin)
+        {
+            int targetIdx = _currentClientList.IndexOf(targetWin.uuid);
+            if (targetIdx < 0) return false;
+        
+            // Iterate through windows higher in the stacking order
+            for (int i = targetIdx + 1; i < _currentClientList.Count; i++)
+            {
+                string otherUuid = _currentClientList[i];
+                if (otherUuid == unityKWinUuid) continue; // Skip ourselves
+
+                WindowManager.Instance.GetWindowRect(otherUuid, out RectInt r);
+                if (r.Contains(posI)) return true;
+            }
+        }
+        else
+        {
+            int targetIdx = _currentStackingList.IndexOf(targetWin.hwnd);
+            if (targetIdx < 0) return false;
+        
+            for (int i = targetIdx + 1; i < _currentStackingList.Count; i++)
+            {
+                IntPtr otherHwnd = _currentStackingList[i];
+                if (otherHwnd == unityHWND) continue; // Skip ourselves
             
-            // On Windows there were complex alpha checks here. 
-            // For X11, if it's in the stacking list and visible, it's likely occluding.
-            return true;
+                if (WindowManager.Instance.GetWindowRect(otherHwnd, out RectInt r))
+                {
+                    if (r.Contains(posI)) return true;
+                }
+            }
         }
         return false;
     }
     
     // Uses X11 stacking list to check relative order
-    bool IsAboveInZOrder(IntPtr a, IntPtr b)
+    bool IsAboveInZOrder(WindowEntry a, WindowEntry b)
     {
-        int idxA = _currentStackingList.IndexOf(a);
-        int idxB = _currentStackingList.IndexOf(b);
-        return idxA > idxB;
+        bool useKWin = SaveLoadHandler.Instance.data.forceKWinApi;
+    
+        if (useKWin)
+        {
+            int idxA = _currentClientList.IndexOf(a.uuid);
+            int idxB = _currentClientList.IndexOf(b.uuid);
+            // Higher index in KWin stacking list means higher in Z-order
+            return idxA > idxB;
+        }
+        else
+        {
+            int idxA = _currentStackingList.IndexOf(a.hwnd);
+            int idxB = _currentStackingList.IndexOf(b.hwnd);
+            return idxA > idxB;
+        }
     }
     
     // ... [Rig calculation methods identical to original, omitted for brevity] ...
@@ -837,13 +948,13 @@ public class AvatarWindowHandler : MonoBehaviour
     void UpdateOccluderQuadsFrameSync()
     {
         if (_occluderSharedMat == null || targetCamera == null || snappedHWND == IntPtr.Zero) { SetTargetQuadActive(false); SetOtherQuadsActive(0); return; }
-        if (!_haveUnityCli && !WindowManager.Instance.GetWindowRect(unityHWND, out Rect uRect)) { SetTargetQuadActive(false); SetOtherQuadsActive(0); return; }
-        if (!_haveUnityCli) _lastUnityCli = RECT.FromRect(WindowManager.Instance.GetWindowRect(unityHWND, out Rect r) ? r : new Rect());
+        if (!_haveUnityCli && !WindowManager.Instance.GetWindowRect(unityHWND, out RectInt uRect)) { SetTargetQuadActive(false); SetOtherQuadsActive(0); return; }
+        if (!_haveUnityCli) _lastUnityCli = RECT.FromRect(WindowManager.Instance.GetWindowRect(unityHWND, out RectInt r) ? r : new RectInt());
 
         RECT uCli = _lastUnityCli;
         Rect unityClient = new Rect(uCli.Left, uCli.Top, uCli.Right - uCli.Left, uCli.Bottom - uCli.Top);
 
-        if (snappedHWND != unityHWND && WindowManager.Instance.GetWindowRect(snappedHWND, out Rect rTr))
+        if (snappedHWND != unityHWND && WindowManager.Instance.GetWindowRect(snappedHWND, out RectInt rTr))
         {
             RECT tr = RECT.FromRect(rTr);
             Rect tInter = Intersect(new Rect(tr.Left, tr.Top, tr.Right - tr.Left, tr.Bottom - tr.Top), unityClient);
@@ -862,7 +973,7 @@ public class AvatarWindowHandler : MonoBehaviour
         for (int i = 0; i < activeOccluders.Count && outCount < maxOtherQuads; i++)
         {
             var w = activeOccluders[i];
-            if (!WindowManager.Instance.GetWindowRect(w.hwnd, out Rect wrct)) continue;
+            if (!WindowManager.Instance.GetWindowRect(w.hwnd, out RectInt wrct)) continue;
             
             // w.hwnd Rect is x,y,w,h
             Rect inter = Intersect(new Rect(wrct.x, wrct.y, wrct.width, wrct.height), unityClient);

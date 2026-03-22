@@ -4,7 +4,6 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Gtk;
 using NativeLibraryLoader;
-using Unity.Collections;
 using UnityEngine;
 using Debug = UnityEngine.Debug;
 
@@ -27,10 +26,6 @@ public static class EarlyEnvSet
     
     [DllImport(WindowManager.LibX11)]
     private static extern IntPtr XDefaultRootWindow(IntPtr display);
-    
-    [DllImport(WindowManager.LibX11)]
-    private static extern bool XTranslateCoordinates(IntPtr display, IntPtr srcW, IntPtr destW,
-        int srcX, int srcY, out int destX, out int destY, out IntPtr child);
     
     [DllImport(WindowManager.LibX11)]
     private static extern int XGetWindowProperty(IntPtr display, IntPtr window, IntPtr property,
@@ -83,6 +78,7 @@ public static class EarlyEnvSet
         }
         if (!CheckEnvAndVisual(display, missing))
         {
+            UnityEngine.Application.Quit(11);
             return;
         }
         if (!IsCompositionSupported(display))
@@ -232,30 +228,6 @@ public static class EarlyEnvSet
         }
 
         return -1;
-    }
-    
-    private static List<IntPtr> GetClientStackingList(IntPtr display, IntPtr rootWindow)
-    {
-        IntPtr atom = XInternAtom(display, "_NET_CLIENT_LIST_STACKING", false);
-        if (atom == IntPtr.Zero) return new List<IntPtr>();
-
-        int status = XGetWindowProperty(display, rootWindow, atom, 0, 1024, false, (IntPtr)33,
-            out _, out int actualFormat, out ulong nItems, out _, out IntPtr prop);
-
-        if (status != 0 || prop == IntPtr.Zero || nItems == 0 || actualFormat != 32)
-        {
-            if (prop != IntPtr.Zero) XFree(prop);
-            return new List<IntPtr>();
-        }
-
-        List<IntPtr> windows = new List<IntPtr>((int)nItems);
-        for (int i = 0; i < (int)nItems; i++)
-        {
-            IntPtr w = Marshal.ReadIntPtr(prop, (i * IntPtr.Size));
-            windows.Add(w);
-        }
-        XFree(prop);
-        return windows;
     }
     
     private static List<IntPtr> GetAllVisibleWindows(IntPtr display, IntPtr rootWindow)

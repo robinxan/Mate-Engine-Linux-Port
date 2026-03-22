@@ -4,10 +4,10 @@ using System.Threading.Tasks;
 
 public static class WaylandUtility
 {
-    public static Vector2 GetMousePositionHyprland() {
+    public static Vector2Int GetMousePositionHyprland() {
         string output = RunCommand("/usr/bin/hyprctl cursorpos");
         string[] cursor = output.Trim().Split(',');
-        return new Vector2(float.Parse(cursor[0]),float.Parse(cursor[1]));
+        return new Vector2Int(int.Parse(cursor[0]),int.Parse(cursor[1]));
     }
 
     public static void SetWindowPositionHyprland(Vector2 position){
@@ -16,13 +16,8 @@ public static class WaylandUtility
 
     public static async Task<Vector2> GetWindowPositionKWin() 
     {
-        var windowGeometry = await UnityEngine.Object.FindFirstObjectByType<KWinManager>().GetWindowGeometry();
-        return new Vector2(windowGeometry.X, windowGeometry.Y);
-    }
-    
-    public static void SetWindowPositionKWin(Vector2 position) 
-    {
-        UnityEngine.Object.FindFirstObjectByType<KWinManager>().MoveWindow(position);
+        var winRect = await Object.FindFirstObjectByType<KWinManager>().GetWindowGeometry();
+        return new Vector2(winRect.x, winRect.y);
     }
 
     static string RunCommand(string command)

@@ -23,9 +23,9 @@ public class AvatarHideHandler : MonoBehaviour
     enum Side { None, Left, Right }
     Side snappedSide = Side.None;
 
-    float cursorOffsetY;
-    float windowW, windowH;
-    float velX, velY;
+    int cursorOffsetY;
+    int windowW, windowH;
+    int velX, velY;
     bool smoothingActive;
     bool wasDragging;
     float snappedAt;
@@ -56,21 +56,21 @@ public class AvatarHideHandler : MonoBehaviour
 
         if (controller.isDragging && !wasDragging)
         {
-            if (WindowManager.Instance.GetWindowRect(unityHWND, out Rect wr) && WindowManager.Instance.GetMousePosition(out Vector2 cp))
+            if (WindowManager.Instance.GetWindowRect(unityHWND, out RectInt wr) && WindowManager.Instance.GetMousePosition(out Vector2Int cp))
             {
                 windowW = Math.Max(1, wr.width);
                 windowH = Math.Max(1, wr.height);
                 cursorOffsetY = cp.y - wr.y;
                 smoothingActive = false;
-                velX = velY = 0f;
+                velX = velY = 0;
             }
         }
 
         if (controller.isDragging)
         {
-            if (!WindowManager.Instance.GetMousePosition(out Vector2 cp)) { wasDragging = controller.isDragging; return; }
-            if (!WindowManager.Instance.GetWindowRect(unityHWND, out Rect wrCur)) { wasDragging = controller.isDragging; return; }
-            Rect mon = GetCurrentMonitorRect(cp);
+            if (!WindowManager.Instance.GetMousePosition(out Vector2Int cp)) { wasDragging = controller.isDragging; return; }
+            if (!WindowManager.Instance.GetWindowRect(unityHWND, out RectInt wrCur)) { wasDragging = controller.isDragging; return; }
+            RectInt mon = GetCurrentMonitorRect(cp);
 
             float anchorLeftDesk = GetAnchorDesktopX(Side.Left);
             float anchorRightDesk = GetAnchorDesktopX(Side.Right);
@@ -96,17 +96,17 @@ public class AvatarHideHandler : MonoBehaviour
 
             if (snappedSide != Side.None)
             {
-                if (!WindowManager.Instance.GetWindowRect(unityHWND, out Rect wr2)) { wasDragging = controller.isDragging; return; }
-                Rect monNow = GetCurrentMonitorRect(cp);
+                if (!WindowManager.Instance.GetWindowRect(unityHWND, out RectInt wr2)) { wasDragging = controller.isDragging; return; }
+                RectInt monNow = GetCurrentMonitorRect(cp);
 
-                float anchorDesk = GetAnchorDesktopX(snappedSide);
+                int anchorDesk = GetAnchorDesktopX(snappedSide);
                 if (anchorDesk < 0) anchorDesk = wr2.x + Math.Max(1, wr2.width / 2);
-                float anchorWinX = Mathf.Clamp(anchorDesk - wr2.x, 0, Math.Max(1, wr2.width));
+                int anchorWinX = Mathf.Clamp(anchorDesk - wr2.x, 0, Math.Max(1, wr2.width));
 
-                float desiredAnchorDesk = snappedSide == Side.Left ? monNow.x + edgeInsetPx : monNow.x + monNow.width - edgeInsetPx;
-                float tx = desiredAnchorDesk - anchorWinX;
+                int desiredAnchorDesk = snappedSide == Side.Left ? monNow.x + edgeInsetPx : monNow.x + monNow.width - edgeInsetPx;
+                int tx = desiredAnchorDesk - anchorWinX;
 
-                float ty = cp.y - cursorOffsetY;
+                int ty = cp.y - cursorOffsetY;
 
                 MoveSmooth(wr2.x, wr2.y, tx, ty, wr2.width, wr2.height);
                 if (keepTopmostWhileSnapped) SetTopMost(true);
@@ -116,17 +116,17 @@ public class AvatarHideHandler : MonoBehaviour
         {
             if (snappedSide != Side.None)
             {
-                if (!WindowManager.Instance.GetWindowRect(unityHWND, out Rect wr)) return;
-                Rect mon = GetMonitorFromWindow(unityHWND);
+                if (!WindowManager.Instance.GetWindowRect(unityHWND, out RectInt wr)) return;
+                RectInt mon = GetMonitorFromWindow(unityHWND);
 
-                float anchorDesk = GetAnchorDesktopX(snappedSide);
+                int anchorDesk = GetAnchorDesktopX(snappedSide);
                 if (anchorDesk < 0) anchorDesk = wr.x + Math.Max(1, wr.width / 2);
-                float anchorWinX = Mathf.Clamp(anchorDesk - wr.x, 0, Math.Max(1, wr.width));
+                int anchorWinX = Mathf.Clamp(anchorDesk - wr.x, 0, Math.Max(1, wr.width));
 
-                float desiredAnchorDesk = snappedSide == Side.Left ? mon.x + edgeInsetPx : mon.x + mon.width - edgeInsetPx;
-                float tx = desiredAnchorDesk - anchorWinX;
+                int desiredAnchorDesk = snappedSide == Side.Left ? mon.x + edgeInsetPx : mon.x + mon.width - edgeInsetPx;
+                int tx = desiredAnchorDesk - anchorWinX;
 
-                float ty = wr.y;
+                int ty = wr.y;
 
                 MoveSmooth(wr.x, wr.y, tx, ty, wr.width, wr.height);
                 if (keepTopmostWhileSnapped) SetTopMost(true);
@@ -136,25 +136,25 @@ public class AvatarHideHandler : MonoBehaviour
         wasDragging = controller.isDragging;
     }
     
-    float GetAnchorDesktopX(Side side)
+    int GetAnchorDesktopX(Side side)
     {
         Transform t = side == Side.Left ? leftHand : rightHand;
         if (t == null || cam == null) return -1;
-        if (!GetUnityClientRect(out Rect uCli)) return -1;
+        if (!GetUnityClientRect(out RectInt uCli)) return -1;
 
         Vector3 sp = cam.WorldToScreenPoint(t.position);
         if (sp.z < 0.01f) return -1;
 
         float clientW = Mathf.Max(1f, uCli.x + uCli.width - uCli.x);
-        float pxW = Mathf.Max(1, cam.pixelWidth);
-        float sx = Mathf.Clamp(sp.x, 0, cam.pixelWidth) * (clientW / pxW);
-        float desktopX = uCli.x + Mathf.RoundToInt(sx);
+        int pxW = Mathf.Max(1, cam.pixelWidth);
+        int sx = (int)(Mathf.Clamp(sp.x, 0, cam.pixelWidth) * (clientW / pxW));
+        int desktopX = uCli.x + Mathf.RoundToInt(sx);
         return desktopX;
     }
 
-    void SnapTo(Side side, Vector2 cp, Rect mon)
+    void SnapTo(Side side, Vector2Int cp, RectInt mon)
     {
-        if (!WindowManager.Instance.GetWindowRect(unityHWND, out Rect wr)) return;
+        if (!WindowManager.Instance.GetWindowRect(unityHWND, out RectInt wr)) return;
 
         windowW = Math.Max(1, wr.width);
         windowH = Math.Max(1, wr.height);
@@ -162,19 +162,19 @@ public class AvatarHideHandler : MonoBehaviour
         snappedSide = side;
         SetHide(side == Side.Left, side == Side.Right);
 
-        float anchorDesk = GetAnchorDesktopX(side);
+        int anchorDesk = GetAnchorDesktopX(side);
         if (anchorDesk < 0) anchorDesk = wr.x + Math.Max(1, (wr.width) / 2);
-        float anchorWinX = Mathf.Clamp(anchorDesk - wr.x, 0, Math.Max(1, wr.width));
+        int anchorWinX = Mathf.Clamp(anchorDesk - wr.x, 0, Math.Max(1, wr.width));
 
-        float desiredAnchorDesk = side == Side.Left ? mon.x + edgeInsetPx : mon.x + mon.width - edgeInsetPx;
-        float tx = desiredAnchorDesk - anchorWinX;
+        int desiredAnchorDesk = side == Side.Left ? mon.x + edgeInsetPx : mon.x + mon.width - edgeInsetPx;
+        int tx = desiredAnchorDesk - anchorWinX;
 
-        float ty = cp.y - cursorOffsetY;
+        int ty = cp.y - cursorOffsetY;
 
         WindowManager.Instance.SetWindowPosition(tx, ty);
         WindowManager.Instance.SetWindowSize(windowW, windowH);
         smoothingActive = enableSmoothing;
-        velX = velY = 0f;
+        velX = velY = 0;
         snappedAt = Time.unscaledTime;
         if (keepTopmostWhileSnapped) SetTopMost(true);
     }
@@ -184,7 +184,7 @@ public class AvatarHideHandler : MonoBehaviour
         snappedSide = Side.None;
         SetHide(false, false);
         smoothingActive = false;
-        velX = velY = 0f;
+        velX = velY = 0;
         SetTopMost(false);
     }
 
@@ -194,7 +194,7 @@ public class AvatarHideHandler : MonoBehaviour
         animator.SetBool("HideRight", right);
     }
 
-    void MoveSmooth(float curX, float curY, float targetX, float targetY, float w, float h)
+    void MoveSmooth(int curX, int curY, int targetX, int targetY, int w, int h)
     {
         if (!enableSmoothing || !smoothingActive)
         {
@@ -206,13 +206,17 @@ public class AvatarHideHandler : MonoBehaviour
             return;
         }
         float dt = Time.unscaledDeltaTime;
-        float nx = Mathf.SmoothDamp(curX, targetX, ref velX, smoothingTime, smoothingMaxSpeed, dt);
-        float ny = Mathf.SmoothDamp(curY, targetY, ref velY, smoothingTime, smoothingMaxSpeed, dt);
-        float ix = Mathf.RoundToInt(nx);
-        float iy = Mathf.RoundToInt(ny);
+        float velXa = velX;
+        float velYa = velY;
+        float nx = Mathf.SmoothDamp(curX, targetX, ref velXa, smoothingTime, smoothingMaxSpeed, dt);
+        float ny = Mathf.SmoothDamp(curY, targetY, ref velYa, smoothingTime, smoothingMaxSpeed, dt);
+        velX = (int)velXa;
+        velY = (int)velYa;
+        int ix = Mathf.RoundToInt(nx);
+        int iy = Mathf.RoundToInt(ny);
         if (Mathf.Abs(targetX - ix) <= 1 && Mathf.Abs(targetY - iy) <= 1)
         {
-            ix = targetX; iy = targetY; smoothingActive = false; velX = velY = 0f;
+            ix = targetX; iy = targetY; smoothingActive = false; velX = velY = 0;
         }
 
         if (ix != curX || iy != curY)
@@ -222,12 +226,12 @@ public class AvatarHideHandler : MonoBehaviour
         }
     }
 
-    Rect GetCurrentMonitorRect(Vector2 cp)
+    RectInt GetCurrentMonitorRect(Vector2Int cp)
     {
         return WindowManager.Instance.GetMonitorRectFromPoint(cp);
     }
 
-    Rect GetMonitorFromWindow(IntPtr hwnd)
+    RectInt GetMonitorFromWindow(IntPtr hwnd)
     {
         return WindowManager.Instance.GetMonitorRectFromWindow(hwnd);
     }
@@ -237,7 +241,7 @@ public class AvatarHideHandler : MonoBehaviour
         return new Rect(Vector2.zero, WindowManager.Instance.GetTotalDisplaySize());
     }
 
-    bool GetUnityClientRect(out Rect r)
+    bool GetUnityClientRect(out RectInt r)
     {
         return WindowManager.Instance.GetWindowRect(out r);
     }

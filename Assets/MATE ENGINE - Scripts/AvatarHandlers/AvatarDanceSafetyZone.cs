@@ -102,9 +102,9 @@ public class AvatarDanceSafetyZone : MonoBehaviour
 
         if (moveWindowAlong)
         {
-            var wp = WindowManager.Instance.GetWindowPosition();
+            Vector2 wp = WindowManager.Instance.GetWindowPosition();
             wp.x += stepPx;
-            WindowManager.Instance.SetWindowPosition(wp);
+            WindowManager.Instance.SetWindowPosition(new((int)wp.x, (int)wp.y));
         }
     }
 

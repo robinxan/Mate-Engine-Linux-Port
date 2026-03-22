@@ -17,7 +17,7 @@ public class SettingsMenuPosition : MonoBehaviour
     }
 
     [Header("Menus to track")]
-    public List<MenuEntry> menus = new List<MenuEntry>();
+    public List<MenuEntry> menus = new();
 
     [Header("Edge margin in Pixels")]
     public float edgeMargin = 50f;
@@ -28,7 +28,7 @@ public class SettingsMenuPosition : MonoBehaviour
     [Header("Monitor refresh (sec)")]
     public float monitorRefreshInterval = 2f;
 
-    private List<Rect> monitorRects = new List<Rect>();
+    private List<RectInt> monitorRects = new();
     private float checkTimer;
     private float monitorTimer;
     private bool lastAtRightEdge;
@@ -72,7 +72,7 @@ public class SettingsMenuPosition : MonoBehaviour
 
         if (!WindowManager.Instance.GetWindowRect(WindowManager.Instance.UnityWindow, out var winRect)) return;
 
-        Rect screen = monitorRects.Count > 0 ? GetBestMonitor(winRect) : new Rect(0, 0, Screen.currentResolution.width, Screen.currentResolution.height);
+        RectInt screen = monitorRects.Count > 0 ? GetBestMonitor(winRect) : new RectInt(0, 0, Screen.currentResolution.width, Screen.currentResolution.height);
 
         bool atRightEdge = winRect.x + winRect.width >= (screen.x + screen.width - edgeMargin);
         if (!initedEdge) { lastAtRightEdge = atRightEdge; initedEdge = true; }
@@ -100,7 +100,7 @@ public class SettingsMenuPosition : MonoBehaviour
         monitorRects = WindowManager.Instance.GetAllMonitors().Values.ToList();
     }
 
-    Rect GetBestMonitor(Rect win)
+    RectInt GetBestMonitor(RectInt win)
     {
         int idx = 0;
         float maxArea = 0;
@@ -112,14 +112,14 @@ public class SettingsMenuPosition : MonoBehaviour
         return monitorRects[idx];
     }
 
-    float OverlapArea(Rect a, Rect b)
+    int OverlapArea(RectInt a, RectInt b)
     {
-        float x1 = Mathf.Max(a.x, b.x);
-        float x2 = Mathf.Min(a.x + a.width, b.x + b.width);
-        float y1 = Mathf.Max(a.y, b.y);
-        float y2 = Mathf.Min(a.y + a.height, b.y + b.height);
-        float w = x2 - x1;
-        float h = y2 - y1;
+        int x1 = Mathf.Max(a.x, b.x);
+        int x2 = Mathf.Min(a.x + a.width, b.x + b.width);
+        int y1 = Mathf.Max(a.y, b.y);
+        int y2 = Mathf.Min(a.y + a.height, b.y + b.height);
+        int w = x2 - x1;
+        int h = y2 - y1;
         return (w > 0 && h > 0) ? w * h : 0;
     }
 }

@@ -125,7 +125,8 @@ public class AvatarBigScreenTouchHandler : MonoBehaviour
         }
 
         // ColliderObjekt an Mausposition setzen (auf 3D-Position in Avatarn�he)
-        Vector3 mouse = WindowManager.Instance.GetMousePosition();
+        var mousePos = WindowManager.Instance.GetMousePosition();
+        Vector3 mouse = new(mousePos.x, mousePos.y);
         float zDist = 1.0f;
         if (bigScreenHandler.attachBone != HumanBodyBones.LastBone)
         {
