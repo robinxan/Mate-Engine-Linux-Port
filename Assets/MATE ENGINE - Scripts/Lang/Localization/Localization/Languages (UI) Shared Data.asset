@@ -1021,6 +1021,14 @@ MonoBehaviour:
     m_Key: CANCEL
     m_Metadata:
       m_Items: []
+  - m_Id: 128117097725030400
+    m_Key: LSS_KWIN
+    m_Metadata:
+      m_Items: []
+  - m_Id: 128118702650290176
+    m_Key: LSS_KWIN_TIP
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

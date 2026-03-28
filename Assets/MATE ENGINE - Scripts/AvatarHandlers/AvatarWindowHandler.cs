@@ -180,7 +180,7 @@ public class AvatarWindowHandler : MonoBehaviour
         }
 
         // X11 TopMost
-        WindowManager.Instance.SetTopmost(SaveLoadHandler.Instance != null ? SaveLoadHandler.Instance.data.isTopmost : true);
+        WindowManager.Instance.SetTopmost(SaveLoadHandler.Instance == null || SaveLoadHandler.Instance.data.isTopmost);
 
         _nextEnumTime = 0f;
         _prevLossyScale = transform.lossyScale;

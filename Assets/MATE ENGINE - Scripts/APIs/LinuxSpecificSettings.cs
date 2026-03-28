@@ -23,6 +23,7 @@ public class LinuxSpecificSettings : MonoBehaviour
     
     private bool useLegacyMoveResizeCalls;
     private bool enableAutoMemoryTrim;
+    private bool forceKWin;
     private WindowType windowType; // 0 for Normal, 1 for Dock
     
     private Vector2 scrollPos;
@@ -41,6 +42,8 @@ public class LinuxSpecificSettings : MonoBehaviour
     private Label winTypeLabel;
     private ComboBox winTypeCombo;
     private Label winTypeDesc;
+    private CheckButton forceKWinToggle;
+    private Label forceKWinDesc;
     private Button cancelBtn;
     private Button saveBtn;
     
@@ -112,6 +115,9 @@ public class LinuxSpecificSettings : MonoBehaviour
         
         winTypeLabel.Text = stringTable.GetEntry("LSS_WINTYPE").GetLocalizedString();
         winTypeDesc.Text = stringTable.GetEntry("LSS_WINTYPE_TIP").GetLocalizedString();
+        
+        ((Label)forceKWinToggle.Child).Text = stringTable.GetEntry("LSS_KWIN").GetLocalizedString();
+        forceKWinDesc.Text = stringTable.GetEntry("LSS_KWIN_TIP").GetLocalizedString();
 
         cancelBtn.Label = stringTable.GetEntry("CANCEL").GetLocalizedString();
         saveBtn.Label = stringTable.GetEntry("SAVE").GetLocalizedString();
@@ -163,6 +169,7 @@ public class LinuxSpecificSettings : MonoBehaviour
         card.Add(scrolledWindow);
         
         var cardBox = new Box(Orientation.Vertical, 20);
+        cardBox.BorderWidth = 5;
         scrolledWindow.Add(cardBox);
 
         intro = new Label(stringTable.GetEntry("LINUX_SPECIFIC_TIP").GetLocalizedString())
@@ -204,6 +211,14 @@ public class LinuxSpecificSettings : MonoBehaviour
         winTypeDesc = CreateDescriptionLabel(stringTable.GetEntry("LSS_WINTYPE_TIP").GetLocalizedString());
         cardBox.PackStart(winTypeDesc, false, false, 0);
         
+        forceKWinToggle = new CheckButton(stringTable.GetEntry("LSS_KWIN").GetLocalizedString()) {Active = SaveLoadHandler.Instance.data.forceKWinApi, UseUnderline = false};
+        ((Label)forceKWinToggle.Child).Xalign = 0.0f;
+        ((Label)forceKWinToggle.Child).Yalign = 0.5f;
+        cardBox.PackStart(forceKWinToggle, false, false, 0);
+        
+        forceKWinDesc = CreateDescriptionLabel(stringTable.GetEntry("LSS_KWIN_TIP").GetLocalizedString());
+        cardBox.PackStart(forceKWinDesc, false, false, 0);
+        
         var buttonBox = new Box(Orientation.Horizontal, 20) { Halign = Align.End };
         contentBox.PackEnd(buttonBox, false, false, 0);
 
@@ -221,6 +236,7 @@ public class LinuxSpecificSettings : MonoBehaviour
             SaveLoadHandler.Instance.data.useLegacyMoveResizeCalls = legacyMoveToggle.Active;
             SaveLoadHandler.Instance.data.enableAutoMemoryTrim = memTrimToggle.Active;
             SaveLoadHandler.Instance.data.windowType = (WindowType)winTypeCombo.Active;
+            SaveLoadHandler.Instance.data.forceKWinApi = forceKWinToggle.Active;
             FindFirstObjectByType<SettingsHandlerToggles>().ApplySettings();
             SaveLoadHandler.Instance.SaveToDisk();
         };
@@ -339,6 +355,12 @@ public class LinuxSpecificSettings : MonoBehaviour
         GUILayout.Label(stringTable.GetEntry("LSS_WINTYPE_TIP").GetLocalizedString(), 
             GUI.skin.GetStyle("label"), GUILayout.ExpandHeight(false));
         
+        GUILayout.Space(10f);
+        
+        forceKWin = GUILayout.Toggle(forceKWin, stringTable.GetEntry("LSS_KWIN").GetLocalizedString());
+
+        GUILayout.Label(stringTable.GetEntry("LSS_KWIN_TIP").GetLocalizedString());
+        
         GUILayout.EndScrollView();
         
         GUILayout.FlexibleSpace();
@@ -352,6 +374,7 @@ public class LinuxSpecificSettings : MonoBehaviour
         {
             SaveLoadHandler.Instance.data.useLegacyMoveResizeCalls = useLegacyMoveResizeCalls;
             SaveLoadHandler.Instance.data.enableAutoMemoryTrim = enableAutoMemoryTrim;
+            SaveLoadHandler.Instance.data.forceKWinApi = forceKWin;
             SaveLoadHandler.Instance.data.windowType = windowType;
 
             FindFirstObjectByType<SettingsHandlerToggles>().ApplySettings();

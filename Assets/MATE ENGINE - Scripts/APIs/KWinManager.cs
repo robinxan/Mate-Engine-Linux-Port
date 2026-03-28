@@ -184,6 +184,7 @@ public class KWinManager : Singleton<KWinManager>
         string scriptName = $"KWin_GetGeometryFor{uuid.Replace("-", "_")}.js";
         string scriptPath = Path.Combine(Application.temporaryCachePath, scriptName);
         string jsScript = _template + $@"
+
             for (let w of workspace.{(_kdeVersion.StartsWith("5") ? "clientList" : "windowList")}()) {{
                 if (w.internalId.toString() == ""{uuid}"") {{
                     send(w.frameGeometry.x + ',' + w.frameGeometry.y);

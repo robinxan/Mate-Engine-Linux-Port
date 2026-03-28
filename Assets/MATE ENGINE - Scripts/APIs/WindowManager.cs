@@ -427,7 +427,7 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
         }
     }
     #endregion
-    public bool GetWindowPosition(out float x, out float y)
+    public bool GetWindowPosition(out int x, out int y)
     {
         var result = GetWindowPosition();
         if (result != Vector2.zero)
@@ -601,7 +601,7 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
             }
 
             var monRect = new RectInt(crtcInfo.x, crtcInfo.y, (int)crtcInfo.width, (int)crtcInfo.height);
-            _monitors.Add(crtcInfoHandle, monRect);
+            _monitors.Add(outInfoHandle, monRect);
 
             XRRFreeCrtcInfo(crtcInfoHandle);
             XRRFreeOutputInfo(outInfoHandle);
@@ -650,7 +650,7 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
             var result = XGetWindowAttributes(_display, window, out var attributes);
             if (result != 0) // Non-zero indicates success in X11
             {
-                return new Vector2(attributes.width, attributes.height);
+                return new Vector2Int(attributes.width, attributes.height);
             }
         }
 
@@ -827,7 +827,7 @@ public class WindowManager : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
         return resultBasedOnWindowCenterPnt;
     }
     
-    public RectInt GetMonitorRectFromHandle(IntPtr monitor)
+    public RectInt GetMonitorFromHandle(IntPtr monitor)
     {
         foreach (var kvp in _monitors.Where(kvp => kvp.Key == monitor))
         {

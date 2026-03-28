@@ -107,23 +107,29 @@ namespace Kirurobo
             public static extern void SetMaximized([MarshalAs(UnmanagedType.U1)] bool bZoomed);
 
             
-            public static void SetPosition(float x, float y) => WindowManager.Instance.SetWindowPosition(x, y);
+            public static void SetPosition(int x, int y) => WindowManager.Instance.SetWindowPosition((int)x, (int)y);
 
             
             [return: MarshalAs(UnmanagedType.Bool)]
-            public static bool GetPosition(out float x, out float y) => WindowManager.Instance.GetWindowPosition(out x, out y);
+            public static bool GetPosition(out int x, out int y) => WindowManager.Instance.GetWindowPosition(out x, out y);
 
             
-            public static void SetSize(float x, float y) => WindowManager.Instance.SetWindowSize(x, y);
+            public static void SetSize(int x, int y) => WindowManager.Instance.SetWindowSize(x, y);
 
             
-            public static bool GetSize(out float x, out float y) => WindowManager.Instance.GetWindowSize(out x, out y);
+            public static bool GetSize(out int x, out int y)
+            {
+                var result = WindowManager.Instance.GetWindowSize(out var x1, out var y1);
+                x = (int)x1;
+                y = (int)y1;
+                return result;
+            }
+
+
+            public static extern bool GetClientSize(out int width, out int height);
 
             
-            public static extern bool GetClientSize(out float width, out float height);
-
-            
-            public static extern bool GetClientRectangle(out float x, out float y, out float width, out float height);
+            public static extern bool GetClientRectangle(out int x, out int y, out int width, out int height);
 
             
             public static extern bool RegisterDropFilesCallback([MarshalAs(UnmanagedType.FunctionPtr)] StringCallback callback);
@@ -154,13 +160,13 @@ namespace Kirurobo
 
             
             [return: MarshalAs(UnmanagedType.Bool)]
-            public static extern bool GetMonitorRectangle(int index, out float x, out float y, out float width, out float height);
+            public static extern bool GetMonitorRectangle(int index, out int x, out int y, out int width, out int height);
 
             
-            public static extern void SetCursorPosition(float x, float y);
+            public static extern void SetCursorPosition(int x, int y);
 
             
-            public static bool GetCursorPosition(out float x, out float y)
+            public static bool GetCursorPosition(out int x, out int y)
             {
                 var result = WindowManager.Instance.GetMousePosition(out var pos);
                 x = pos.x;
@@ -473,9 +479,8 @@ namespace Kirurobo
 
         string GetDebubgWindowSizeInfo()
         {
-            float x, y, cx, cy;
-            LibUniWinC.GetSize(out x, out y);
-            LibUniWinC.GetClientSize(out cx, out cy);
+            LibUniWinC.GetSize(out var x, out var y);
+            LibUniWinC.GetClientSize(out var cx, out var cy);
             return $"W:{x},H:{y} CW:{cx},CH:{cy}";
         }
 
@@ -564,7 +569,7 @@ namespace Kirurobo
         /// <param name="position">Position.</param>
         public void SetWindowPosition(Vector2 position)
         {
-            LibUniWinC.SetPosition(position.x, position.y);
+            LibUniWinC.SetPosition((int)position.x, (int)position.y);
         }
 
         /// <summary>
@@ -573,8 +578,10 @@ namespace Kirurobo
         /// <returns>The position.</returns>
         public Vector2 GetWindowPosition()
         {
-            Vector2 pos = Vector2.zero;
-            LibUniWinC.GetPosition(out pos.x, out pos.y);
+            Vector2Int pos = Vector2Int.zero;
+            LibUniWinC.GetPosition(out var x, out var y);
+            pos.x = x;
+            pos.y = y;
             return pos;
         }
 
@@ -584,7 +591,7 @@ namespace Kirurobo
         /// <param name="size">x is width and y is height</param>
         public void SetWindowSize(Vector2 size)
         {
-            LibUniWinC.SetSize(size.x, size.y);
+            LibUniWinC.SetSize((int)size.x, (int)size.y);
         }
 
         /// <summary>
@@ -594,7 +601,9 @@ namespace Kirurobo
         public Vector2 GetWindowSize()
         {
             Vector2 size = Vector2.zero;
-            LibUniWinC.GetSize(out size.x, out size.y);
+            LibUniWinC.GetSize(out var x, out var y);
+            size.x = x;
+            size.y = y;
             return size;
         }
 
@@ -605,7 +614,9 @@ namespace Kirurobo
         public Vector2 GetClientSize()
         {
             Vector2 size = Vector2.zero;
-            LibUniWinC.GetClientSize(out size.x, out size.y);
+            LibUniWinC.GetClientSize(out var x, out var y);
+            size.x = x;
+            size.y = y;
             return size;
         }
 
@@ -617,7 +628,11 @@ namespace Kirurobo
         {
             Vector2 pos = Vector2.zero;
             Vector2 size = Vector2.zero;
-            LibUniWinC.GetClientRectangle(out pos.x, out pos.y, out size.x, out size.y);
+            LibUniWinC.GetClientRectangle(out var x1, out var y1, out var x2, out var y2);
+            pos.x = x1;
+            pos.y = y1;
+            size.y = x2;
+            size.y = y2;
             return new Rect(pos.x, pos.y, size.x, size.y);
         }
 
@@ -700,7 +715,7 @@ namespace Kirurobo
         /// <param name="position">Position.</param>
         public static void SetCursorPosition(Vector2 position)
         {
-            LibUniWinC.SetCursorPosition(position.x, position.y);
+            LibUniWinC.SetCursorPosition((int)position.x, (int)position.y);
         }
 
         /// <summary>
@@ -710,7 +725,9 @@ namespace Kirurobo
         public static Vector2 GetCursorPosition()
         {
             Vector2 pos = Vector2.zero;
-            LibUniWinC.GetCursorPosition(out pos.x, out pos.y);
+            LibUniWinC.GetCursorPosition(out var x, out var y);
+            pos.x = x;
+            pos.y = y;
             return pos;
         }
 
@@ -771,7 +788,12 @@ namespace Kirurobo
         /// <returns></returns>
         public static bool GetMonitorRectangle(int index, out Vector2 position, out Vector2 size)
         {
-            return LibUniWinC.GetMonitorRectangle(index, out position.x, out position.y, out size.x, out size.y);
+            var result = LibUniWinC.GetMonitorRectangle(index, out var x1, out var y1, out var x2, out var y2);
+            position.x = x1;
+            position.y = x2;
+            size.x = x2;
+            size.y = y2;
+            return result;
         }
 
         /// <summary>
@@ -781,21 +803,19 @@ namespace Kirurobo
         /// <returns></returns>
         public bool FitToMonitor(int monitorIndex)
         {
-            float dx, dy, dw, dh;
-            if (LibUniWinC.GetMonitorRectangle(monitorIndex, out dx, out dy, out dw, out dh))
+            if (LibUniWinC.GetMonitorRectangle(monitorIndex, out var dx, out var dy, out var dw, out var dh))
             {
                 // 最大化状態なら一度戻す
                 if (LibUniWinC.IsMaximized()) LibUniWinC.SetMaximized(false);
 
                 // 指定モニタ中央座標
-                float cx = dx + (dw / 2);
-                float cy = dy + (dh / 2);
+                int cx = dx + (dw / 2);
+                int cy = dy + (dh / 2);
 
                 // ウィンドウ中央を指定モニタ中央に移動
-                float ww, wh;
-                LibUniWinC.GetSize(out ww, out wh);
-                float wx = cx - (ww / 2);
-                float wy = cy - (wh / 2);
+                LibUniWinC.GetSize(out var ww, out var wh);
+                int wx = cx - (ww / 2);
+                int wy = cy - (wh / 2);
                 LibUniWinC.SetPosition(wx, wy);
 
                 // 最大化
@@ -821,8 +841,7 @@ namespace Kirurobo
 
             for (int i = 0; i < monitors; i++)
             {
-                float x, y, w, h;
-                bool result = LibUniWinC.GetMonitorRectangle(i, out x, out y, out w, out h);
+                bool result = LibUniWinC.GetMonitorRectangle(i, out var x, out var y, out var w, out var h);
                 message += String.Format(
                     "Monitor {0}: X:{1}, Y:{2} - W:{3}, H:{4}\r\n",
                     i, x, y, w, h
